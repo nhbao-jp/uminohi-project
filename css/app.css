@@ -266,6 +266,63 @@ body {
     font-size: .82rem
 }
 
+.homophone-action {
+    display: flex;
+    justify-content: center;
+    margin-top: .75rem
+}
+
+.homophone-action .btn {
+    border-radius: 999px;
+    font-weight: 650
+}
+
+.homophone-reading-label {
+    color: var(--muted);
+    font-weight: 700;
+    margin-bottom: .85rem
+}
+
+.homophone-word-list {
+    display: grid;
+    gap: .65rem
+}
+
+.homophone-item {
+    padding: .8rem 1rem;
+    border: 1px solid #e4e7ef;
+    border-radius: .85rem;
+    background: #f7f7fb
+}
+
+.homophone-item.is-current-answer {
+    border-color: #198754;
+    background: #f0faf4
+}
+
+.homophone-item-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .6rem
+}
+
+.homophone-current-badge {
+    flex: 0 0 auto;
+    padding: .2rem .5rem;
+    border-radius: 999px;
+    background: rgba(25, 135, 84, .12);
+    color: #157347;
+    font-size: .68rem;
+    font-weight: 700
+}
+
+.homophone-item-reading {
+    margin: .2rem 0;
+    color: var(--muted);
+    font-size: .8rem
+}
+
 .app-footer {
     position: fixed;
     inset: auto 0 0;

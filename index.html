@@ -109,6 +109,12 @@
                     </div>
                 </article>
                 <div id="answerRow" class="answer-row"></div>
+                <div id="homophoneAction" class="homophone-action d-none">
+                    <button id="homophoneButton" type="button" class="btn btn-outline-primary">
+                        <i class="bi bi-collection me-2" aria-hidden="true"></i><span
+                            id="homophoneButtonText"></span>
+                    </button>
+                </div>
             </section>
         </section>
     </main>
@@ -200,6 +206,28 @@
                             </li>
                         </ul>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="homophoneModal" tabindex="-1" aria-labelledby="homophoneModalTitle">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content homophone-modal-content">
+                <div class="modal-header border-0">
+                    <h2 class="modal-title fs-5">
+                        <i class="bi bi-collection text-primary me-2" aria-hidden="true"></i><span
+                            id="homophoneModalTitle">同じ読み方の単語</span>
+                    </h2>
+                    <button id="homophoneModalDismiss" type="button" class="btn-close" data-bs-dismiss="modal"
+                        aria-label="閉じる"></button>
+                </div>
+                <div class="modal-body pt-0">
+                    <p id="homophoneReading" class="homophone-reading-label"></p>
+                    <div id="homophoneWordList" class="homophone-word-list"></div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button id="homophoneModalClose" type="button" class="btn btn-primary w-100"
+                        data-bs-dismiss="modal">閉じる</button>
                 </div>
             </div>
         </div>

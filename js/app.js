@@ -37,11 +37,13 @@ let totalQuestion = 1403,
 const e = {};
 let reviewModal,
   resultModal,
+  homophoneModal,
   resetModal,
   toast,
   timerAnimationId = null,
   autoSaveTimeoutId = null,
-  lastAutoSavedAt = 0;
+  lastAutoSavedAt = 0,
+  currentHomophoneQuestion = null;
 const AUTO_SAVE_DELAY_MS = 350;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const I18N = {
@@ -104,6 +106,11 @@ const I18N = {
     timedOut: "時間切れ・未習得単語に追加しました",
     invalidData: "有効なデータがありません",
     noMeaning: "意味なし",
+    showHomophones: (n) => `同音異義語を見る（${n}語）`,
+    homophonesTitle: "同じ読み方の単語",
+    homophonesReading: "読み方",
+    homophonesCurrent: "この問題の正解",
+    close: "閉じる",
     emptyAnswer: "（空欄）",
     randomOn: "ランダム出題をオンにしました",
     randomOff: "ランダム出題をオフにしました",
@@ -170,6 +177,11 @@ const I18N = {
     timedOut: "Hết giờ — đã thêm vào danh sách chưa nhớ",
     invalidData: "Không có dữ liệu hợp lệ",
     noMeaning: "Không có nghĩa",
+    showHomophones: (n) => `Xem từ đồng âm (${n} từ)`,
+    homophonesTitle: "Các từ đồng âm",
+    homophonesReading: "Cách đọc",
+    homophonesCurrent: "Đáp án của câu này",
+    close: "Đóng",
     emptyAnswer: "(Trống)",
     randomOn: "Đã bật câu hỏi ngẫu nhiên",
     randomOff: "Đã tắt câu hỏi ngẫu nhiên",
@@ -297,6 +309,15 @@ function cache() {
     "questionLabel",
     "questionText",
     "answerRow",
+    "homophoneAction",
+    "homophoneButton",
+    "homophoneButtonText",
+    "homophoneModal",
+    "homophoneModalTitle",
+    "homophoneReading",
+    "homophoneWordList",
+    "homophoneModalDismiss",
+    "homophoneModalClose",
     "saveButton",
     "resetButton",
     "randomQuestionToggle",
@@ -462,6 +483,8 @@ function render(saved = false) {
     quizMode === "initial" ? tr().question : tr().reviewQuestion;
   e.questionText.textContent = display(q);
   e.answerRow.innerHTML = "";
+  e.homophoneAction.classList.add("d-none");
+  currentHomophoneQuestion = null;
   currentOptions.forEach((v, i) => {
     const b = document.createElement("button");
     b.className = "answer-card";
@@ -503,26 +526,61 @@ function pause() {
 function info(v, q, correct) {
   const x = document.createElement("div");
   x.className = "answer-info";
-  if (q && isKatakanaQuestion(q) && v === correct && q.vocab) {
-    x.textContent = q.vocab;
-    x.classList.add("katakana-english-info");
+  if (v === correct && q) {
+    if (isKatakanaQuestion(q) && q.vocab) {
+      x.textContent = q.vocab;
+      x.classList.add("katakana-english-info");
+    } else {
+      x.textContent = `${q.kanji || q.vocab}\n${q.meaning || tr().noMeaning}`;
+    }
   } else {
-    // The correct option always belongs to the current question. Distractors
-    // can share the same reading, so show every matching word rather than an
-    // arbitrary homophone from the dataset.
-    const items =
-      v === correct && q ? [q] : (answerLookup.get(String(v)) || []);
-    x.textContent = items.length
-      ? items
-          .map(
-            (item) =>
-              `${item.kanji || item.vocab}\n${item.meaning || tr().noMeaning}`
-          )
-          .join("\n────────\n")
+    const items = answerLookup.get(String(v)) || [];
+    const item = items[Math.floor(Math.random() * items.length)];
+    x.textContent = item
+      ? `${item.kanji || item.vocab}\n${item.meaning || tr().noMeaning}`
       : tr().invalidData;
   }
   x.style.whiteSpace = "pre-line";
   return x;
+}
+function openHomophoneModal(q) {
+  const items = [
+    ...(answerLookup.get(String(q.answer1)) || []),
+    q,
+  ].filter(
+    (item, index, all) =>
+      all.findIndex((candidate) => candidate.stt === item.stt) === index
+  );
+  items.sort((a, b) => a.stt - b.stt);
+  e.homophoneReading.textContent = `${tr().homophonesReading}: ${q.answer1}`;
+  e.homophoneWordList.innerHTML = "";
+  items.forEach((item) => {
+    const card = document.createElement("article");
+    card.className = "homophone-item";
+    if (item.stt === q.stt) card.classList.add("is-current-answer");
+
+    const heading = document.createElement("div");
+    heading.className = "homophone-item-heading";
+    const word = document.createElement("strong");
+    word.textContent = item.kanji || item.vocab;
+    heading.appendChild(word);
+    if (item.stt === q.stt) {
+      const badge = document.createElement("span");
+      badge.className = "homophone-current-badge";
+      badge.textContent = tr().homophonesCurrent;
+      heading.appendChild(badge);
+    }
+
+    const reading = document.createElement("div");
+    reading.className = "homophone-item-reading";
+    reading.textContent = item.vocab;
+    const meaning = document.createElement("p");
+    meaning.className = "mb-0";
+    meaning.textContent = item.meaning || tr().noMeaning;
+    card.append(heading, reading, meaning);
+    e.homophoneWordList.appendChild(card);
+  });
+  homophoneModal.show();
 }
 function decorate(sel, correct, q) {
   [...e.answerRow.children].forEach((c, i) => {
@@ -538,6 +596,22 @@ function decorate(sel, correct, q) {
     }
     c.appendChild(info(v, q, correct));
   });
+  const homophones = answerLookup.get(String(q.answer1)) || [];
+  if (homophones.length > 1) {
+    currentHomophoneQuestion = q;
+    e.homophoneButtonText.textContent = tr().showHomophones(homophones.length);
+    e.homophoneAction.classList.remove("d-none");
+  }
+}
+async function waitForFeedback(delay) {
+  await wait(delay);
+  if (e.homophoneModal.classList.contains("show")) {
+    await new Promise((resolve) =>
+      e.homophoneModal.addEventListener("hidden.bs.modal", resolve, {
+        once: true,
+      })
+    );
+  }
 }
 async function answer(i) {
   if (
@@ -575,7 +649,7 @@ async function answer(i) {
   timerRemainingMs = QUESTION_TIME_MS;
   scheduleAutoSave();
   speakVocabulary(q.vocab);
-  await wait(1500);
+  await waitForFeedback(1500);
   if (transitionToken !== questionToken) return;
   render();
   scheduleAutoSave();
@@ -597,7 +671,7 @@ async function timeout(t) {
   currentOptions = [];
   timerRemainingMs = QUESTION_TIME_MS;
   scheduleAutoSave();
-  await wait(700);
+  await waitForFeedback(700);
   if (transitionToken !== questionToken) return;
   render();
   scheduleAutoSave();
@@ -864,6 +938,14 @@ function applyLanguage(language, notify = true) {
   e.restartButtonText.textContent = t.resetAll;
   e.reviewTitleText.textContent = t.reviewTitle;
   e.startReviewButtonText.textContent = t.startReview;
+  e.homophoneModalTitle.textContent = t.homophonesTitle;
+  e.homophoneModalDismiss.setAttribute("aria-label", t.close);
+  e.homophoneModalClose.textContent = t.close;
+  if (currentHomophoneQuestion) {
+    const homophones =
+      answerLookup.get(String(currentHomophoneQuestion.answer1)) || [];
+    e.homophoneButtonText.textContent = t.showHomophones(homophones.length);
+  }
   e.resultTotalLabel.textContent = t.resultTotal;
   e.resultRememberedLabel.textContent = t.resultRemembered;
   e.resultAttemptsLabel.textContent = t.resultAttempts;
@@ -1007,6 +1089,7 @@ function init() {
   cache();
   reviewModal = new bootstrap.Modal(e.reviewModal);
   resultModal = new bootstrap.Modal(e.resultModal);
+  homophoneModal = new bootstrap.Modal(e.homophoneModal);
   resetModal = new bootstrap.Modal(e.resetConfirmModal);
   toast = new bootstrap.Toast(e.appToast, { delay: 2000 });
   try {
@@ -1068,6 +1151,8 @@ function init() {
   };
   e.confirmResetButton.onclick = reset;
   e.startReviewButton.onclick = startReview;
+  e.homophoneButton.onclick = () =>
+    currentHomophoneQuestion && openHomophoneModal(currentHomophoneQuestion);
   e.nextBatchButton.onclick = nextBatch;
   e.restartButton.onclick = () => resetModal.show();
   document.onkeydown = (ev) => {

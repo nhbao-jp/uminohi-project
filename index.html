@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="ja">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>JLPT 語彙クイズ</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/app.css">
+</head>
+
+<body>
+    <div id="wrongRateStamp" class="wrong-rate-stamp" hidden role="status" aria-live="assertive"
+        aria-label="Incorrect answer rate is over fifty percent">
+        <div class="wrong-rate-backdrop"></div>
+        <div class="wrong-rate-seal" aria-hidden="true"><span class="wrong-rate-seal-main">バカヤロー</span><span
+                id="wrongRateStampPercent" class="wrong-rate-seal-percent">51% WRONG</span></div>
+    </div>
+    <div class="toast-container position-fixed top-0 start-50 translate-middle-x p-3">
+        <div id="appToast" class="toast app-toast border-0 shadow" role="status">
+            <div class="d-flex">
+                <div id="appToastBody" class="toast-body fw-semibold"></div><button class="btn-close me-2 m-auto"
+                    data-bs-dismiss="toast" aria-label="閉じる"></button>
+            </div>
+        </div>
+    </div>
+    <header class="app-header fpt-wave-header">
+        <div class="header-wave header-wave-blue"></div>
+        <div class="header-wave header-wave-orange"></div>
+        <div class="header-wave header-wave-green"></div>
+        <div class="container-fluid header-inner"><a class="header-logo" href="#" aria-label="Trang chủ"><img
+                    src="logo.png" alt="Logo"></a><a class="brand header-brand" href="#">
+                <h1>日本語の語彙クイズ</h1>
+            </a><button id="settingsButton" class="icon-button header-settings" type="button" data-bs-toggle="offcanvas"
+                data-bs-target="#settingsPanel" aria-controls="settingsPanel" aria-label="設定"><i
+                    class="bi bi-gear-fill"></i></button></div>
+    </header>
+    <main class="app-shell container-fluid">
+        <section class="quiz-container mx-auto">
+            <div id="alertRegion"></div>
+            <section id="loadingState" class="status-panel card border-0 shadow-sm text-center p-4">
+                <div class="spinner-border text-primary mx-auto mb-3"></div>
+                <p id="loadingText" class="mb-0 fw-semibold">データセットを読み込んでいます...</p>
+            </section>
+            <section id="quizApp" class="d-none">
+                <div class="stats-row mb-2">
+                    <div class="mini-stat"><span>モード</span><strong id="modeText">初回</strong></div>
+                    <div class="mini-stat remembered"><span>覚えた単語</span><strong id="rememberedCount">0</strong></div>
+                    <div class="mini-stat unremembered"><span>未習得単語</span><strong id="unrememberedCount">0</strong>
+                    </div>
+                    <div class="mini-stat"><span>復習回数</span><strong id="reviewRoundText">0</strong></div>
+                </div>
+                <div class="progress-panel card border-0 shadow-sm mb-3">
+                    <div class="card-body progress-card-body">
+                        <div class="dual-progress-row">
+                            <section class="progress-box">
+                                <div class="progress-summary">
+                                    <div class="progress-meta"><span class="progress-icon"><i
+                                                class="bi bi-list-ol"></i></span>
+                                        <div><small id="currentProgressLabel">現在の範囲</small><strong
+                                                id="questionCounter"></strong></div>
+                                    </div><span id="progressText" class="progress-percent">0%</span>
+                                </div>
+                                <div class="progress quiz-progress">
+                                    <div id="progressBar" class="progress-bar"></div>
+                                </div>
+                            </section>
+                            <section class="progress-box overall">
+                                <div class="progress-summary">
+                                    <div class="progress-meta"><span class="progress-icon"><i
+                                                class="bi bi-bullseye"></i></span>
+                                        <div><small id="datasetProgressLabel">全体の進捗</small><strong
+                                                id="datasetProgressCounter">完了 0 /
+                                                0問</strong></div>
+                                    </div><span id="datasetProgressText" class="progress-percent">0%</span>
+                                </div>
+                                <div class="progress quiz-progress">
+                                    <div id="datasetProgressBar" class="progress-bar"></div>
+                                </div>
+                            </section>
+                        </div>
+                        <div class="timer-summary">
+                            <div class="timer-meta"><span class="timer-icon" aria-hidden="true"><i
+                                        class="bi bi-stopwatch-fill"></i></span><span>回答時間</span></div>
+                            <strong id="timerText" class="timer-text">5.0秒</strong>
+                        </div>
+                        <div class="timer-track" role="progressbar" aria-label="残り時間">
+                            <div id="timerBar" class="timer-bar"></div>
+                        </div>
+                    </div>
+                </div>
+                <article id="questionCard" class="question-card card border-0 shadow-sm mb-3 position-relative"
+                    role="button" tabindex="0">
+                    <div id="pauseOverlay" class="pause-overlay d-none"><i
+                            class="bi bi-pause-circle-fill"></i><strong>一時停止中</strong><span>問題カードをタップ、またはSpaceキーで再開</span>
+                        <div class="pause-actions mt-2"><button id="saveButton"
+                                class="btn btn-light btn-sm pause-action"><i
+                                    class="bi bi-floppy-fill me-1"></i>セッションを保存</button><button id="resetButton"
+                                class="btn btn-outline-light btn-sm pause-action"><i
+                                    class="bi bi-arrow-counterclockwise me-1"></i>最初からリセット</button></div>
+                    </div>
+                    <div class="card-body d-flex align-items-center justify-content-center text-center">
+                        <div>
+                            <p id="questionLabel" class="question-label text-secondary mb-2">問題</p>
+                            <h2 id="questionText" class="question-text mb-0" lang="ja"></h2>
+                        </div>
+                    </div>
+                </article>
+                <div id="answerRow" class="answer-row"></div>
+            </section>
+        </section>
+    </main>
+    <footer class="app-footer">
+        <div class="container-fluid footer-inner"><span><i
+                    class="bi bi-keyboard me-1"></i><span id="footerShortcut">1〜4キーで選択。問題カードのタップ、またはSpaceキーで一時停止・再開</span></span><span
+                class="developer-credit"><i class="bi bi-code-slash me-1" aria-hidden="true"></i><span id="footerCreditText">このWebアプリは</span> <a
+                    href="mailto:baonh4@fpt.com">baonh4@fpt.com</a><span id="footerCreditSuffix"> によって開発されました</span></span></div>
+    </footer>
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="settingsPanel" aria-labelledby="settingsTitle">
+        <div class="offcanvas-header">
+            <h2 class="offcanvas-title fs-5" id="settingsTitle"><i class="bi bi-gear-fill me-2"></i>設定</h2><button
+                class="btn-close" data-bs-dismiss="offcanvas" aria-label="閉じる"></button>
+        </div>
+        <div class="offcanvas-body settings-list">
+            <div class="setting-item">
+                <div><label class="fw-semibold" for="randomQuestionToggle">問題をランダムに出題</label>
+                    <p class="small text-secondary mb-0">各ラウンド開始時に問題順をシャッフルします。</p>
+                </div>
+                <div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch"
+                        id="randomQuestionToggle"></div>
+            </div>
+            <div class="setting-item timeout-setting">
+                <div class="setting-copy"><label class="fw-semibold" for="timeoutValue">回答時間</label>
+                    <p class="small text-secondary mb-0">1問あたり3〜30秒で設定できます。変更は次の問題から適用されます。</p>
+                </div>
+                <div class="timeout-stepper" role="group" aria-label="回答時間の調整">
+                    <button id="decreaseTimeoutButton" type="button" class="btn timeout-button" aria-label="1秒減らす"><i
+                            class="bi bi-dash-lg"></i></button>
+                    <div class="timeout-value-wrap"><input id="timeoutValue" class="form-control" type="number" min="3"
+                            max="30" step="1" value="5" inputmode="numeric"><span id="timeoutUnitText">秒</span></div>
+                    <button id="increaseTimeoutButton" type="button" class="btn timeout-button" aria-label="1秒増やす"><i
+                            class="bi bi-plus-lg"></i></button>
+                </div>
+            </div>
+            <div class="setting-item scope-setting">
+                <div class="setting-copy">
+                    <label id="scopeSettingLabel" class="fw-semibold" for="scopeSizeSelect">出題範囲</label>
+                    <p id="scopeSettingDescription" class="small text-secondary mb-0">1回のテストで出題する単語数を設定します。</p>
+                </div>
+                <div class="scope-controls">
+                    <select id="scopeSizeSelect" class="form-select" aria-labelledby="scopeSettingLabel">
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="50" selected>50</option>
+                        <option value="100">100</option>
+                        <option id="customScopeOption" value="custom">カスタム</option>
+                        <option id="fullScopeOption" value="full">全問題</option>
+                    </select>
+                    <div id="customScopeWrap" class="custom-scope-wrap d-none"><input id="customScopeValue"
+                            class="form-control" type="number" min="1" step="1" value="50" inputmode="numeric"><span
+                            id="scopeUnitText">問</span></div>
+                </div>
+                <div id="scopeStatus" class="scope-status mt-2"></div>
+            </div>
+            <div class="setting-item language-setting">
+                <div class="setting-copy"><label id="languageSettingLabel" class="fw-semibold"
+                        for="languageSelect">表示言語</label>
+                    <p id="languageSettingDescription" class="small text-secondary mb-0">インターフェースの表示言語を選択します。</p>
+                </div>
+                <div class="language-select-wrap">
+                    <i class="bi bi-translate" aria-hidden="true"></i>
+                    <select id="languageSelect" class="form-select language-native-select"
+                        aria-labelledby="languageSettingLabel">
+                        <option value="ja">日本語</option>
+                        <option value="vi">Tiếng Việt</option>
+                    </select>
+                    <div class="dropdown language-dropdown">
+                        <button id="languageDropdownButton" class="btn language-dropdown-button dropdown-toggle"
+                            type="button" data-bs-toggle="dropdown" aria-expanded="false"
+                            aria-labelledby="languageSettingLabel languageDropdownButton">
+                            <span id="selectedLanguageFlag" class="flag-icon" aria-hidden="true"></span>
+                            <span id="selectedLanguageText">日本語</span>
+                        </button>
+                        <ul class="dropdown-menu language-menu w-100" aria-labelledby="languageDropdownButton">
+                            <li>
+                                <button class="dropdown-item language-option active" type="button" data-language="ja">
+                                    <span class="flag-icon flag-japan" aria-hidden="true"><span></span></span>
+                                    <span>日本語</span>
+                                    <i class="bi bi-check-lg language-check ms-auto" aria-hidden="true"></i>
+                                </button>
+                            </li>
+                            <li>
+                                <button class="dropdown-item language-option" type="button" data-language="vi">
+                                    <span class="flag-icon flag-vietnam" aria-hidden="true"><span>★</span></span>
+                                    <span>Tiếng Việt</span>
+                                    <i class="bi bi-check-lg language-check ms-auto" aria-hidden="true"></i>
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="reviewModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header border-0">
+                    <h2 class="modal-title fs-4"><i class="bi bi-journal-bookmark-fill text-warning me-2"></i><span id="reviewTitleText">未習得単語一覧</span>
+                    </h2>
+                </div>
+                <div class="modal-body">
+                    <p id="reviewModalSubtitle" class="text-secondary"></p>
+                    <div id="reviewWordList" class="review-word-list"></div>
+                </div>
+                <div class="modal-footer border-0"><button id="startReviewButton" class="btn btn-warning w-100"><i
+                            class="bi bi-arrow-repeat me-2"></i><span id="startReviewButtonText">復習を開始</span></button></div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="resultModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0">
+                    <h2 class="modal-title fs-4"><i class="bi bi-bar-chart-fill text-primary me-2"></i><span
+                            id="resultTitleText">テスト結果</span></h2>
+                </div>
+                <div class="modal-body">
+                    <div class="result-grid">
+                        <div class="result-item"><span id="resultTotalLabel">総単語数</span><strong id="resultTotal">0</strong></div>
+                        <div class="result-item"><span id="resultRememberedLabel">覚えた単語</span><strong id="resultRemembered">0</strong></div>
+                        <div class="result-item"><span id="resultAttemptsLabel">総回答数</span><strong id="resultAttempts">0</strong></div>
+                        <div class="result-item"><span id="resultRoundsLabel">復習回数</span><strong id="resultRounds">0</strong></div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 result-actions"><button id="nextBatchButton"
+                        class="btn btn-primary flex-fill"><i class="bi bi-arrow-right-circle-fill me-2"></i><span
+                            id="nextBatchButtonText">次の範囲へ</span></button><button id="restartButton"
+                        class="btn btn-outline-danger flex-fill"><i class="bi bi-arrow-counterclockwise me-2"></i><span
+                            id="restartButtonText">すべてリセット</span></button></div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="resetConfirmModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-header border-0">
+                    <h2 class="modal-title fs-5"><i
+                            class="bi bi-exclamation-triangle-fill text-warning me-2"></i><span id="resetTitleText">リセットしますか？</span></h2>
+                </div>
+                <div id="resetBodyText" class="modal-body">保存済みセッションと現在の進捗を削除し、第1問からやり直します。</div>
+                <div class="modal-footer border-0"><button id="cancelResetButton" class="btn btn-light flex-fill"
+                        data-bs-dismiss="modal">キャンセル</button><button id="confirmResetButton"
+                        class="btn btn-danger flex-fill">リセット</button></div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>

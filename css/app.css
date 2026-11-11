@@ -15,7 +15,7 @@ body {
     background: linear-gradient(135deg, #f5f7ff, #eef8f5);
     font-family: Inter, "Noto Sans JP", system-ui, sans-serif;
     min-height: 100vh;
-    padding: 64px 0 48px
+    padding: 64px 0 88px
 }
 
 .app-header {
@@ -224,6 +224,14 @@ body {
     flex-wrap: nowrap
 }
 
+.answer-row.two-answer-mode {
+    flex-direction: column
+}
+
+.answer-row.two-answer-mode .answer-card {
+    min-height: 120px
+}
+
 .answer-card {
     flex: 1 1 0;
     min-width: 0;
@@ -326,16 +334,42 @@ body {
 .app-footer {
     position: fixed;
     inset: auto 0 0;
-    height: 40px;
+    min-height: 40px;
     background: rgba(255, 255, 255, .92);
     border-top: 1px solid #e8eaf0;
     z-index: 1030;
     font-size: .72rem;
-    color: var(--muted)
+    color: var(--muted);
+    backdrop-filter: blur(14px)
+}
+
+.footer-inner {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: inherit;
+    height: auto;
+    padding-top: .2rem;
+    padding-bottom: .2rem
+}
+
+.developer-credit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .4rem;
+    text-align: center;
+    line-height: 1.25
+}
+
+.developer-credit {
+    flex-wrap: nowrap;
+    font-size: .68rem
 }
 
 .app-footer a {
     color: var(--primary);
+    font-weight: 700;
     text-decoration: none
 }
 
@@ -385,17 +419,16 @@ body {
 
 @media(max-width:700px) {
     body {
-        padding-bottom: 62px
+        padding-bottom: 92px
     }
 
     .footer-inner {
-        flex-direction: column;
-        justify-content: center;
-        gap: .1rem
+        padding-right: 10px;
+        padding-left: 10px
     }
 
     .app-footer {
-        height: 54px
+        min-height: 44px
     }
 
     .answer-row {
@@ -554,8 +587,8 @@ body {
         height: 27px
     }
 
-    .footer-inner {
-        font-size: .66rem;
+    .developer-credit {
+        font-size: .62rem;
         text-align: center
     }
 
@@ -1335,4 +1368,13 @@ body {
     .header-brand strong {
         font-size: .8rem
     }
+}
+
+.optimized-quiz-active .stats-row,
+.optimized-quiz-active .dual-progress-row {
+    display: none !important
+}
+
+.optimized-quiz-active .progress-card-body {
+    padding: .65rem .85rem !important
 }

@@ -18,7 +18,10 @@ let totalQuestion = 1403,
   isAnswerLocked = false,
   isDatasetReady = false,
   isPaused = false,
+  isQuizScopeActive = false,
   randomQuestions = false,
+  optimizedQuizUI = false,
+  twoAnswerMode = false,
   currentLanguage = "ja",
   scopeMode = "preset",
   scopeSize = 50,
@@ -58,7 +61,7 @@ const I18N = {
     unremembered: "未習得単語",
     rounds: "復習回数",
     progress: "進捗",
-    currentProgress: "現在の範囲",
+    currentProgress: "現在の問題数",
     overallProgress: "全体の進捗",
     overallCounter: (done, total) => `完了 ${done} / ${total}問`,
     answerTime: "回答時間",
@@ -73,21 +76,23 @@ const I18N = {
     timeout: "回答時間",
     timeoutDesc:
       "1問あたり3〜30秒で設定できます。変更は次の問題から適用されます。",
+    optimizeQuiz: "テスト画面を最適化",
+    optimizeQuizDesc:
+      "回答時間のカウント中は統計・進捗・フッターを隠し、問題と回答に集中できます。",
+    twoAnswerMode: "2択モード",
+    twoAnswerModeDesc: "正解と、その問題に設定された選択肢からランダムに1つを出題します。設定は次の問題から適用されます。",
     seconds: "秒",
     saved: "セッションを保存しました",
     languageChanged: "表示言語を日本語に変更しました",
     questionCounter: (n, t) => `第${n}問 / 全${t}問`,
-    scope: "出題範囲",
-    scopeDesc: "1回のテストで出題する単語数を設定します。",
+    scope: "問題数",
+    scopeDesc: "1回のテストで出題する問題数を設定します。",
     scopeUnit: "問",
     scopeStatus: (done, total) => `出題済み：${done} / ${total}問`,
     result: "テスト結果",
-    nextBatch: "次の範囲へ",
+    nextBatch: "次の問題セットへ",
     resetAll: "すべてリセット",
-    footerShortcut:
-      "1〜4キーで選択。問題カードのタップ、またはSpaceキーで一時停止・再開",
-    footerCredit: "このWebアプリは",
-    footerCreditSuffix: " によって開発されました",
+    footerCredit: (year) => `© ${year} · このウェブサイトは`,
     loading: "データセットを読み込んでいます...",
     customScope: "カスタム",
     fullScope: "全問題",
@@ -121,7 +126,7 @@ const I18N = {
   vi: {
     settings: "Cài đặt",
     language: "Ngôn ngữ hiển thị",
-    languageDesc: "Chọn ngôn ngữ hiển thị cho giao diện WebApp.",
+    languageDesc: "Chọn ngôn ngữ hiển thị cho website.",
     mode: "Chế độ",
     initial: "Lần đầu",
     review: (n) => `Ôn lần ${n}`,
@@ -129,7 +134,7 @@ const I18N = {
     unremembered: "Chưa nhớ",
     rounds: "Lượt ôn",
     progress: "Tiến độ",
-    currentProgress: "Phạm vi hiện tại",
+    currentProgress: "Số lượng câu hỏi hiện tại",
     overallProgress: "Tiến độ chung",
     overallCounter: (done, total) => `Đã kiểm tra ${done} / ${total}`,
     answerTime: "Thời gian trả lời",
@@ -144,21 +149,24 @@ const I18N = {
     timeout: "Thời gian trả lời",
     timeoutDesc:
       "Có thể đặt từ 3 đến 30 giây cho mỗi câu. Áp dụng từ câu tiếp theo.",
+    optimizeQuiz: "Tối ưu giao diện kiểm tra",
+    optimizeQuizDesc:
+      "Khi thời gian trả lời đang đếm, ẩn thống kê, tiến độ và footer để tập trung vào câu hỏi.",
+    twoAnswerMode: "Chế độ 2 đáp án",
+    twoAnswerModeDesc:
+      "Dùng đáp án đúng và chọn ngẫu nhiên một đáp án nhiễu của câu hỏi. Áp dụng từ câu tiếp theo.",
     seconds: "giây",
     saved: "Đã lưu phiên hiện tại",
     languageChanged: "Đã chuyển giao diện sang tiếng Việt",
     questionCounter: (n, t) => `Câu ${n} / ${t}`,
-    scope: "Lọc phạm vi trắc nghiệm",
-    scopeDesc: "Chọn số từ được lấy cho mỗi lần kiểm tra.",
+    scope: "Số lượng câu hỏi",
+    scopeDesc: "Chọn số lượng câu hỏi cho mỗi lần kiểm tra.",
     scopeUnit: "câu",
     scopeStatus: (done, total) => `Đã hỏi: ${done} / ${total} câu`,
     result: "Kết quả bài kiểm tra",
-    nextBatch: "Phạm vi tiếp theo",
+    nextBatch: "Bộ câu hỏi tiếp theo",
     resetAll: "Đặt lại tất cả",
-    footerShortcut:
-      "Chọn bằng phím 1–4. Chạm thẻ câu hỏi hoặc nhấn Space để tạm dừng/tiếp tục",
-    footerCredit: "WebApp này được phát triển bởi",
-    footerCreditSuffix: "",
+    footerCredit: (year) => `© ${year} · Website được phát triển bởi`,
     loading: "Đang tải dữ liệu...",
     customScope: "Tùy chỉnh",
     fullScope: "Tất cả câu hỏi",
@@ -192,6 +200,10 @@ const I18N = {
 };
 function tr() {
   return I18N[currentLanguage] || I18N.ja;
+}
+function applyTwoAnswerModeSetting() {
+  twoAnswerMode = e.twoAnswerModeToggle.checked;
+  persistSettings();
 }
 function shuffle(a) {
   a = [...a];
@@ -275,10 +287,10 @@ function applyScopeSetting(notify = true) {
   if (notify)
     showToast(
       currentLanguage === "vi"
-        ? `Phạm vi mỗi lần: ${
+        ? `Số lượng câu hỏi mỗi lần: ${
             scopeMode === "full" ? "Toàn bộ" : scopeSize + " câu"
           }`
-        : `1回の出題範囲：${scopeMode === "full" ? "全問題" : scopeSize + "問"}`
+        : `1回の問題数：${scopeMode === "full" ? "全問題" : scopeSize + "問"}`
     );
 }
 
@@ -340,6 +352,12 @@ function cache() {
     "selectedLanguageText",
     "languageSettingLabel",
     "languageSettingDescription",
+    "optimizedQuizToggle",
+    "optimizedQuizSettingLabel",
+    "optimizedQuizSettingDescription",
+    "twoAnswerModeToggle",
+    "twoAnswerModeSettingLabel",
+    "twoAnswerModeSettingDescription",
     "settingsTitle",
     "reviewModal",
     "reviewTitleText",
@@ -366,9 +384,7 @@ function cache() {
     "resetBodyText",
     "cancelResetButton",
     "confirmResetButton",
-    "footerShortcut",
     "footerCreditText",
-    "footerCreditSuffix",
     "appToast",
     "appToastBody",
   ].forEach((id) => (e[id] = document.getElementById(id)));
@@ -417,6 +433,20 @@ function stats() {
 function display(q) {
   return q.stt <= 1295 ? q.kanji || q.vocab : q.vocab;
 }
+function getAnswerCount() {
+  return twoAnswerMode ? 2 : 4;
+}
+function createOptions(q) {
+  if (!twoAnswerMode)
+    return shuffle([q.answer1, q.answer2, q.answer3, q.answer4]);
+  const distractors = [q.answer2, q.answer3, q.answer4].filter(
+    (option) => option && option !== q.answer1
+  );
+  if (!distractors.length)
+    throw new Error(`Question ${q.stt} has no valid distractor for 2-choice mode.`);
+  const distractor = distractors[Math.floor(Math.random() * distractors.length)];
+  return shuffle([q.answer1, distractor]);
+}
 function isKatakanaQuestion(q) {
   const text = String(q.kanji || "").trim();
   return Boolean(text) && /^[\u30A0-\u30FF\u31F0-\u31FFー・\s]+$/.test(text);
@@ -429,6 +459,13 @@ function clearTimer() {
     cancelAnimationFrame(timerAnimationId);
     timerAnimationId = null;
   }
+  updateOptimizedQuizLayout();
+}
+function updateOptimizedQuizLayout() {
+  document.body.classList.toggle(
+    "optimized-quiz-active",
+    optimizedQuizUI && isDatasetReady && isQuizScopeActive
+  );
 }
 function timerUI(ms) {
   ms = Math.max(0, ms);
@@ -453,6 +490,7 @@ function startTimer(ms = QUESTION_TIME_MS) {
   timerRemainingMs = ms;
   timerStartedAt = performance.now();
   const token = ++questionToken;
+  updateOptimizedQuizLayout();
   timerUI(ms);
   const animate = (now) => {
     if (token !== questionToken || isPaused || isAnswerLocked) return;
@@ -465,12 +503,14 @@ function startTimer(ms = QUESTION_TIME_MS) {
 }
 function render(saved = false) {
   clearTimer();
+  isQuizScopeActive = true;
+  updateOptimizedQuizLayout();
   if (currentIndex >= activeQuestions.length) return finish();
   isAnswerLocked = false;
   isPaused = false;
   const q = activeQuestions[currentIndex];
-  if (!saved || currentOptions.length !== 4)
-    currentOptions = shuffle([q.answer1, q.answer2, q.answer3, q.answer4]);
+  if (!saved || currentOptions.length !== getAnswerCount())
+    currentOptions = createOptions(q);
   const p = ((currentIndex + 1) / activeQuestions.length) * 100;
   e.questionCounter.textContent = tr().questionCounter(
     currentIndex + 1,
@@ -483,6 +523,7 @@ function render(saved = false) {
     quizMode === "initial" ? tr().question : tr().reviewQuestion;
   e.questionText.textContent = display(q);
   e.answerRow.innerHTML = "";
+  e.answerRow.classList.toggle("two-answer-mode", twoAnswerMode);
   e.homophoneAction.classList.add("d-none");
   currentHomophoneQuestion = null;
   currentOptions.forEach((v, i) => {
@@ -521,6 +562,7 @@ function pause() {
     startTimer(timerRemainingMs);
   }
   pauseUI();
+  updateOptimizedQuizLayout();
   scheduleAutoSave();
 }
 function info(v, q, correct) {
@@ -626,6 +668,7 @@ async function answer(i) {
     return;
   isAnswerLocked = true;
   clearTimer();
+  updateOptimizedQuizLayout();
   const transitionToken = ++questionToken;
   const q = activeQuestions[currentIndex],
     ok = currentOptions[i] === q.answer1;
@@ -658,6 +701,7 @@ async function timeout(t) {
   if (t !== questionToken || isPaused || isAnswerLocked) return;
   isAnswerLocked = true;
   clearTimer();
+  updateOptimizedQuizLayout();
   const transitionToken = ++questionToken;
   const q = activeQuestions[currentIndex];
   totalAttempts++;
@@ -732,6 +776,8 @@ function startReview() {
 function complete() {
   clearTimer();
   isAnswerLocked = true;
+  isQuizScopeActive = false;
+  updateOptimizedQuizLayout();
   currentBatchIds.forEach((id) => completedQuestionIds.add(id));
   updateDatasetProgress();
   e.resultTotal.textContent = currentBatchIds.length;
@@ -954,9 +1000,7 @@ function applyLanguage(language, notify = true) {
   e.resetBodyText.textContent = t.resetBody;
   e.cancelResetButton.textContent = t.cancel;
   e.confirmResetButton.textContent = t.resetConfirm;
-  e.footerShortcut.textContent = t.footerShortcut;
-  e.footerCreditText.textContent = t.footerCredit;
-  e.footerCreditSuffix.textContent = t.footerCreditSuffix;
+  e.footerCreditText.textContent = t.footerCredit(new Date().getFullYear());
   e.loadingText.textContent = t.loading;
   e.timeoutUnitText.textContent = t.seconds;
   updateScopeStatus();
@@ -983,6 +1027,10 @@ function applyLanguage(language, notify = true) {
     settingItems[1].querySelector("label").textContent = t.timeout;
     settingItems[1].querySelector("p").textContent = t.timeoutDesc;
   }
+  e.optimizedQuizSettingLabel.textContent = t.optimizeQuiz;
+  e.optimizedQuizSettingDescription.textContent = t.optimizeQuizDesc;
+  e.twoAnswerModeSettingLabel.textContent = t.twoAnswerMode;
+  e.twoAnswerModeSettingDescription.textContent = t.twoAnswerModeDesc;
   if (e.pauseOverlay) {
     e.pauseOverlay.querySelector("strong").textContent = t.paused;
     e.pauseOverlay.querySelector("span").textContent = t.resume;
@@ -1007,6 +1055,8 @@ function persistSettings() {
     SETTING_KEY,
     JSON.stringify({
       randomQuestions,
+      optimizedQuizUI,
+      twoAnswerMode,
       questionTimeSeconds: QUESTION_TIME_MS / 1000,
       language: currentLanguage,
       scopeMode,
@@ -1019,6 +1069,11 @@ function applySetting() {
   randomQuestions = e.randomQuestionToggle.checked;
   persistSettings();
   showToast(randomQuestions ? tr().randomOn : tr().randomOff);
+}
+function applyOptimizedQuizSetting() {
+  optimizedQuizUI = e.optimizedQuizToggle.checked;
+  persistSettings();
+  updateOptimizedQuizLayout();
 }
 function setQuestionTimeout(value, notify = true) {
   const seconds = Math.min(30, Math.max(3, Math.round(Number(value) || 5)));
@@ -1095,6 +1150,8 @@ function init() {
   try {
     const savedSettings = JSON.parse(localStorage.getItem(SETTING_KEY) || "{}");
     randomQuestions = savedSettings.randomQuestions || false;
+    optimizedQuizUI = savedSettings.optimizedQuizUI === true;
+    twoAnswerMode = savedSettings.twoAnswerMode === true;
     currentLanguage = savedSettings.language === "vi" ? "vi" : "ja";
     scopeMode = savedSettings.scopeMode || "preset";
     scopeSize = Math.max(1, Number(savedSettings.scopeSize) || 50);
@@ -1104,6 +1161,8 @@ function init() {
     );
   } catch {}
   e.randomQuestionToggle.checked = randomQuestions;
+  e.optimizedQuizToggle.checked = optimizedQuizUI;
+  e.twoAnswerModeToggle.checked = twoAnswerMode;
   e.timeoutValue.value = QUESTION_TIME_MS / 1000;
   const presetScopeValues = [...e.scopeSizeSelect.options]
     .map((option) => option.value)
@@ -1122,6 +1181,8 @@ function init() {
   e.languageSelect.value = currentLanguage;
   applyLanguage(currentLanguage, false);
   e.randomQuestionToggle.onchange = applySetting;
+  e.optimizedQuizToggle.onchange = applyOptimizedQuizSetting;
+  e.twoAnswerModeToggle.onchange = applyTwoAnswerModeSetting;
   e.languageSelect.onchange = () => applyLanguage(e.languageSelect.value);
   document
     .querySelectorAll(".language-option")
@@ -1160,13 +1221,11 @@ function init() {
     if (ev.code === "Space") {
       ev.preventDefault();
       pause();
-    } else if (
-      isDatasetReady &&
-      !isPaused &&
-      !isAnswerLocked &&
-      /^Digit[1-4]$/.test(ev.code)
-    )
-      answer(+ev.code.slice(-1) - 1);
+    } else if (isDatasetReady && !isPaused && !isAnswerLocked) {
+      const shortcut = /^Digit([1-4])$/.exec(ev.code);
+      if (shortcut && Number(shortcut[1]) <= currentOptions.length)
+        answer(Number(shortcut[1]) - 1);
+    }
   };
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) flushAutoSave();

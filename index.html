@@ -59,7 +59,7 @@
                                 <div class="progress-summary">
                                     <div class="progress-meta"><span class="progress-icon"><i
                                                 class="bi bi-list-ol"></i></span>
-                                        <div><small id="currentProgressLabel">現在の範囲</small><strong
+                                        <div><small id="currentProgressLabel">現在の問題数</small><strong
                                                 id="questionCounter"></strong></div>
                                     </div><span id="progressText" class="progress-percent">0%</span>
                                 </div>
@@ -119,10 +119,12 @@
         </section>
     </main>
     <footer class="app-footer">
-        <div class="container-fluid footer-inner"><span><i
-                    class="bi bi-keyboard me-1"></i><span id="footerShortcut">1〜4キーで選択。問題カードのタップ、またはSpaceキーで一時停止・再開</span></span><span
-                class="developer-credit"><i class="bi bi-code-slash me-1" aria-hidden="true"></i><span id="footerCreditText">このWebアプリは</span> <a
-                    href="mailto:baonh4@fpt.com">baonh4@fpt.com</a><span id="footerCreditSuffix"> によって開発されました</span></span></div>
+        <div class="container-fluid footer-inner">
+            <div class="developer-credit">
+                <span id="footerCreditText">© 2026 · このウェブサイトは</span>
+                <a href="mailto:baonh4@fpt.com">baonh4@fpt.com</a>
+            </div>
+        </div>
     </footer>
     <div class="offcanvas offcanvas-end" tabindex="-1" id="settingsPanel" aria-labelledby="settingsTitle">
         <div class="offcanvas-header">
@@ -150,10 +152,28 @@
                             class="bi bi-plus-lg"></i></button>
                 </div>
             </div>
+            <div class="setting-item">
+                <div>
+                    <label id="optimizedQuizSettingLabel" class="fw-semibold" for="optimizedQuizToggle">Tối ưu giao diện kiểm tra</label>
+                    <p id="optimizedQuizSettingDescription" class="small text-secondary mb-0">Ẩn thống kê, tiến độ và footer khi thời gian trả lời đang đếm.</p>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" role="switch" id="optimizedQuizToggle">
+                </div>
+            </div>
+            <div class="setting-item">
+                <div>
+                    <label id="twoAnswerModeSettingLabel" class="fw-semibold" for="twoAnswerModeToggle">Chế độ 2 đáp án</label>
+                    <p id="twoAnswerModeSettingDescription" class="small text-secondary mb-0">Dùng đáp án đúng và chọn ngẫu nhiên một đáp án nhiễu của câu hỏi. Áp dụng từ câu tiếp theo.</p>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" role="switch" id="twoAnswerModeToggle">
+                </div>
+            </div>
             <div class="setting-item scope-setting">
                 <div class="setting-copy">
-                    <label id="scopeSettingLabel" class="fw-semibold" for="scopeSizeSelect">出題範囲</label>
-                    <p id="scopeSettingDescription" class="small text-secondary mb-0">1回のテストで出題する単語数を設定します。</p>
+                    <label id="scopeSettingLabel" class="fw-semibold" for="scopeSizeSelect">問題数</label>
+                    <p id="scopeSettingDescription" class="small text-secondary mb-0">1回のテストで出題する問題数を設定します。</p>
                 </div>
                 <div class="scope-controls">
                     <select id="scopeSizeSelect" class="form-select" aria-labelledby="scopeSettingLabel">
@@ -265,7 +285,7 @@
                 </div>
                 <div class="modal-footer border-0 result-actions"><button id="nextBatchButton"
                         class="btn btn-primary flex-fill"><i class="bi bi-arrow-right-circle-fill me-2"></i><span
-                            id="nextBatchButtonText">次の範囲へ</span></button><button id="restartButton"
+                            id="nextBatchButtonText">次の問題セットへ</span></button><button id="restartButton"
                         class="btn btn-outline-danger flex-fill"><i class="bi bi-arrow-counterclockwise me-2"></i><span
                             id="restartButtonText">すべてリセット</span></button></div>
             </div>

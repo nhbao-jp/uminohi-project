@@ -715,6 +715,7 @@ async function timeout(t) {
   currentOptions = [];
   timerRemainingMs = QUESTION_TIME_MS;
   scheduleAutoSave();
+  speakVocabulary(q.vocab);
   await waitForFeedback(700);
   if (transitionToken !== questionToken) return;
   render();

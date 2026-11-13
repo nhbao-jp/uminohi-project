@@ -1,4 +1,5 @@
 import { LEVELS, getCourses } from "../services/course-catalog.js";
+import { courseUrl, levelUrl } from "../utils/routes.js";
 
 const levelGrid = document.getElementById("levelGrid");
 const homePage = document.getElementById("homePage");
@@ -46,7 +47,7 @@ export async function showLevelCourses(levelId) {
     courses.forEach((course) => {
       const card = document.createElement("a");
       card.className = "course-card";
-      card.href = `#/renshuu/${level.id}/${course.id}`;
+      card.href = courseUrl(level.id, course.id);
       const title = document.createElement("h3");
       title.textContent = course.name;
       const description = document.createElement("p");
@@ -56,7 +57,7 @@ export async function showLevelCourses(levelId) {
       action.className = "course-card-action";
       const actionLabel = document.createElement("span");
       actionLabel.textContent =
-        currentLanguage === "vi" ? "Bắt đầu học" : "学習を始める";
+        currentLanguage === "vi" ? "Mở khóa học" : "コースを開く";
       const arrow = document.createElement("i");
       arrow.className = "bi bi-arrow-right";
       arrow.setAttribute("aria-hidden", "true");
@@ -125,8 +126,8 @@ export function applyHomeLanguage(language) {
   );
   document.querySelector("#quizPage .home-icon-link").title =
     currentLanguage === "vi" ? "Trang chủ" : "ホーム";
-  document.getElementById("renshuuLevelLink").textContent =
-    currentLanguage === "vi" ? "Khóa học" : "コース";
+  document.getElementById("renshuuModeLabel").textContent =
+    currentLanguage === "vi" ? "Luyện tập" : "練習";
   document.querySelector(".courses-page > .renshuu-navigation").setAttribute(
     "aria-label",
     currentLanguage === "vi" ? "Điều hướng trình độ" : "レベルのナビゲーション"
@@ -153,15 +154,15 @@ export function applyHomeLanguage(language) {
       card.querySelector("p").textContent = defaultCourseDescription();
     }
     card.querySelector(".course-card-action span").textContent =
-      currentLanguage === "vi" ? "Bắt đầu học" : "学習を始める";
+      currentLanguage === "vi" ? "Mở khóa học" : "コースを開く";
   });
   updateCourseCopy();
 }
 
 function defaultCourseDescription() {
   return currentLanguage === "vi"
-    ? "Mở khóa học để bắt đầu luyện tập."
-    : "コースを開いて学習を始めましょう。";
+    ? "Mở khóa học để chọn Học hoặc Luyện tập."
+    : "コースを開いて学ぶか練習するかを選びます。";
 }
 
 function updateCourseCopy() {
@@ -197,7 +198,7 @@ function renderLevels() {
   LEVELS.forEach((level) => {
     const card = document.createElement("a");
     card.className = "level-card";
-    card.href = `#/level/${level.id}`;
+    card.href = levelUrl(level.id);
     card.setAttribute(
       "aria-label",
       currentLanguage === "vi"

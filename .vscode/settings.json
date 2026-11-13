@@ -1,3 +1,4 @@
 {
-    "github.copilot.chat.localIndex.enabled": true
+    "github.copilot.chat.localIndex.enabled": true,
+    "liveServer.settings.file": "index.html"
 }

@@ -1,6 +1,7 @@
 "use strict";
 import { parseQuestions } from "../utils/question-parser.js";
 import { orderQuestions, shuffle } from "../utils/random.js";
+import { speakJapanese } from "../services/japanese-speech.js";
 
 let QUESTION_TIME_MS = 5000;
 const SESSION_KEY_BASE = "jlptVocabularyQuizSessionV2";
@@ -46,7 +47,8 @@ let correctAnswer = 0,
   timerIntervalId = null,
   questionToken = 0,
   timerRemainingMs = QUESTION_TIME_MS,
-  timerStartedAt = 0;
+  timerStartedAt = 0,
+  pauseAfterFeedback = false;
 const e = {};
 let reviewModal,
   resultModal,
@@ -127,6 +129,12 @@ function playFeedbackSound(result) {
   };
   const notes = patterns[result];
   if (!notes) return;
+  const peakGain =
+    result === "celebration"
+      ? 0.5
+      : result === "incorrect" || result === "timeout"
+      ? 0.5
+      : 0.5;
   try {
     resumeFeedbackAudio(context);
     const now = context.currentTime;
@@ -138,10 +146,7 @@ function playFeedbackSound(result) {
       oscillator.type = result === "incorrect" ? "triangle" : "sine";
       oscillator.frequency.setValueAtTime(note.frequency, startAt);
       gain.gain.setValueAtTime(0.0001, startAt);
-      gain.gain.exponentialRampToValueAtTime(
-        result === "celebration" ? 0.045 : 0.1,
-        startAt + 0.012
-      );
+      gain.gain.exponentialRampToValueAtTime(peakGain, startAt + 0.012);
       gain.gain.exponentialRampToValueAtTime(0.0001, endAt);
       oscillator.connect(gain);
       gain.connect(context.destination);
@@ -1053,6 +1058,13 @@ async function waitForFeedback(delay, autoOpenedHomophones = false) {
   if (e.homophoneModal.classList.contains("show"))
     await waitForHomophoneModalClose();
 }
+function renderAfterFeedback(transitionToken) {
+  if (transitionToken !== questionToken) return;
+  const shouldPause = pauseAfterFeedback;
+  pauseAfterFeedback = false;
+  render();
+  if (shouldPause && currentIndex < activeQuestions.length) pause();
+}
 async function answer(i) {
   if (
     !isDatasetReady ||
@@ -1090,8 +1102,7 @@ async function answer(i) {
   speakVocabulary(q.vocab);
   const autoOpenedHomophones = maybeOpenHomophones(q);
   await waitForFeedback(1500, autoOpenedHomophones);
-  if (transitionToken !== questionToken) return;
-  render();
+  renderAfterFeedback(transitionToken);
 }
 async function timeout(t) {
   if (t !== questionToken || isPaused || isAnswerLocked) return;
@@ -1114,8 +1125,7 @@ async function timeout(t) {
   speakVocabulary(q.vocab);
   const autoOpenedHomophones = maybeOpenHomophones(q);
   await waitForFeedback(700, autoOpenedHomophones);
-  if (transitionToken !== questionToken) return;
-  render();
+  renderAfterFeedback(transitionToken);
 }
 function showWrongRateStamp(wrongRate) {
   return new Promise((resolve) => {
@@ -1356,6 +1366,7 @@ function nextBatch() {
 }
 function startNewSession(restartFromBeginning = false) {
   if (!isDatasetReady || !questions.length) return;
+  pauseAfterFeedback = false;
   localStorage.removeItem(SESSION_KEY);
   stopSpeechPlayback();
   questionToken++;
@@ -1617,20 +1628,7 @@ function stopSpeechPlayback() {
 }
 function speakVocabulary(text) {
   if (!vocabularyAudioEnabled) return;
-  stopSpeechPlayback();
-  const utterance = new SpeechSynthesisUtterance(String(text || ""));
-  const voices = speechSynthesis.getVoices();
-  utterance.lang = "ja-JP";
-  utterance.rate = 0.85;
-  utterance.voice =
-    voices.find(
-      (voice) =>
-        voice.lang.toLowerCase() === "ja-jp" && voice.default
-    ) ||
-    voices.find((voice) => voice.lang.toLowerCase() === "ja-jp") ||
-    voices.find((voice) => /^ja(?:-|$)/i.test(voice.lang)) ||
-    null;
-  speechSynthesis.speak(utterance);
+  speakJapanese(text);
 }
 async function load(datasetUrl, restoreSavedSession = true) {
   isLoading = true;
@@ -1979,6 +1977,7 @@ export async function initRenshuu(
 }
 
 export function suspendRenshuu() {
+  pauseAfterFeedback = false;
   if (!activeCourseKey) return;
   isSuspended = true;
   if (!isDatasetReady) return;
@@ -1991,6 +1990,22 @@ export function suspendRenshuu() {
   } else if (!isPaused && currentIndex < activeQuestions.length) {
     pause();
   }
+}
+
+export function pauseRenshuuForSettings() {
+  if (
+    !isDatasetReady ||
+    isPaused ||
+    currentIndex >= activeQuestions.length
+  ) {
+    return;
+  }
+  if (isAnswerLocked) {
+    stopSpeechPlayback();
+    pauseAfterFeedback = true;
+    return;
+  }
+  pause();
 }
 
 export async function startRenshuu(

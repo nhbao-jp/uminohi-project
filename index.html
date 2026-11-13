@@ -30,30 +30,69 @@
         <div class="header-wave header-wave-blue"></div>
         <div class="header-wave header-wave-orange"></div>
         <div class="header-wave header-wave-green"></div>
-        <div class="container-fluid header-inner"><a class="header-logo" href="#" aria-label="Trang chủ"><img
-                    src="logo.png" alt="Logo"></a><a class="brand header-brand" href="#">
+        <div class="container-fluid header-inner"><a class="header-logo" href="#/" aria-label="Trang chủ"><img
+                    src="logo.png" alt="Logo"></a><a class="brand header-brand" href="#/">
                 <h1>日本語の語彙クイズ</h1>
-            </a><button id="settingsButton" class="icon-button header-settings" type="button" data-bs-toggle="offcanvas"
+            </a><button id="settingsButton" class="icon-button header-settings d-none" type="button" data-bs-toggle="offcanvas"
                 data-bs-target="#settingsPanel" aria-controls="settingsPanel" aria-label="設定"><i
                     class="bi bi-gear-fill"></i></button></div>
     </header>
     <main class="app-shell container-fluid">
+        <section id="homePage" class="home-page">
+            <div class="home-heading">
+                <h2>JLPT VOCABULARY LEARNING</h2>
+                <p>Kiên trì mỗi ngày, tiến bộ từng bước.</p>
+            </div>
+            <div id="levelGrid" class="level-grid" aria-label="Danh sách cấp độ JLPT"></div>
+        </section>
+        <section id="coursesPage" class="courses-page d-none">
+            <nav class="renshuu-navigation" aria-label="Điều hướng trình độ">
+                <div class="renshuu-breadcrumb">
+                    <a class="home-icon-link" href="#/" aria-label="Trang chủ" title="Trang chủ">
+                        <i class="bi bi-house-door-fill" aria-hidden="true"></i>
+                    </a>
+                    <i class="bi bi-chevron-right breadcrumb-separator" aria-hidden="true"></i>
+                    <span id="courseBreadcrumbLevel" class="selected-course-name">N3</span>
+                </div>
+            </nav>
+            <div class="home-heading courses-heading">
+                <p class="home-eyebrow">CHỌN KHÓA HỌC</p>
+            </div>
+            <p id="courseStatus" class="course-status" role="status" aria-live="polite"></p>
+            <div id="courseList" class="course-grid"></div>
+        </section>
+        <section id="quizPage" class="d-none">
         <section class="quiz-container mx-auto">
+            <nav class="renshuu-navigation" aria-label="Điều hướng khóa học">
+                <div class="renshuu-breadcrumb">
+                    <a class="home-icon-link" href="#/" aria-label="Trang chủ" title="Trang chủ">
+                        <i class="bi bi-house-door-fill" aria-hidden="true"></i>
+                    </a>
+                    <i class="bi bi-chevron-right breadcrumb-separator" aria-hidden="true"></i>
+                    <a id="renshuuCourseLevelLink" class="back-link" href="#/level/n3">N3</a>
+                    <i class="bi bi-chevron-right breadcrumb-separator" aria-hidden="true"></i>
+                    <a id="renshuuLevelLink" class="back-link" href="#/">
+                        Danh sách khóa học
+                    </a>
+                    <i class="bi bi-chevron-right breadcrumb-separator" aria-hidden="true"></i>
+                    <span id="selectedCourseName" class="selected-course-name"></span>
+                </div>
+            </nav>
             <div id="alertRegion"></div>
             <section id="loadingState" class="status-panel card border-0 shadow-sm text-center p-4">
                 <div class="spinner-border text-primary mx-auto mb-3"></div>
                 <p id="loadingText" class="mb-0 fw-semibold">データセットを読み込んでいます...</p>
             </section>
             <section id="quizApp" class="d-none">
-                <div class="stats-row mb-2">
-                    <div class="mini-stat"><span>モード</span><strong id="modeText">初回</strong></div>
-                    <div class="mini-stat remembered"><span>覚えた単語</span><strong id="rememberedCount">0</strong></div>
-                    <div class="mini-stat unremembered"><span>未習得単語</span><strong id="unrememberedCount">0</strong>
-                    </div>
-                    <div class="mini-stat"><span>復習回数</span><strong id="reviewRoundText">0</strong></div>
-                </div>
                 <div class="progress-panel card border-0 shadow-sm mb-3">
-                    <div class="card-body progress-card-body">
+                    <div class="card-body progress-card-body quiz-dashboard">
+                        <div class="stats-row quiz-stats">
+                            <div class="mini-stat"><span>モード</span><strong id="modeText">初回</strong></div>
+                            <div class="mini-stat remembered"><span>覚えた単語</span><strong id="rememberedCount">0</strong></div>
+                            <div class="mini-stat unremembered"><span>未習得単語</span><strong id="unrememberedCount">0</strong>
+                            </div>
+                            <div class="mini-stat"><span>復習回数</span><strong id="reviewRoundText">0</strong></div>
+                        </div>
                         <div class="dual-progress-row">
                             <section class="progress-box">
                                 <div class="progress-summary">
@@ -101,11 +140,9 @@
                                 class="btn btn-outline-light btn-sm pause-action"><i
                                     class="bi bi-arrow-counterclockwise me-1"></i>最初からリセット</button></div>
                     </div>
-                    <div class="card-body d-flex align-items-center justify-content-center text-center">
-                        <div>
-                            <p id="questionLabel" class="question-label text-secondary mb-2">問題</p>
-                            <h2 id="questionText" class="question-text mb-0" lang="ja"></h2>
-                        </div>
+                    <div class="card-body question-card-body text-center">
+                        <p id="questionLabel" class="question-label text-secondary">問題</p>
+                        <h2 id="questionText" class="question-text mb-0" lang="ja"></h2>
                     </div>
                 </article>
                 <div id="answerRow" class="answer-row"></div>
@@ -116,6 +153,7 @@
                     </button>
                 </div>
             </section>
+        </section>
         </section>
     </main>
     <footer class="app-footer">
@@ -306,7 +344,7 @@
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="js/app.js"></script>
+    <script type="module" src="js/app.js"></script>
 </body>
 
 </html>

@@ -880,7 +880,6 @@ function restore() {
       : QUESTION_TIME_MS;
     updateScopeStatus();
     render(true);
-    if (!isPaused) pause();
     showToast(tr().restored);
     return true;
   } catch (error) {

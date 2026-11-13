@@ -4,12 +4,5 @@
     "name": "漢字と語彙N3",
     "description": "Kanji & Goi N3.",
     "dataset": "kanji-goi-n3.txt"
-  },
-  {
-    "id": "mimi-kara-oboeru-n3",
-    "name": "耳から覚えるＮ3",
-    "description": "耳から覚えるＮ3.",
-    "dataset": "mimi-kara-oboeru-n3.txt"
   }
-  
 ]

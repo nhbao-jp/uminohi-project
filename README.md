@@ -7,7 +7,10 @@ khoản.
 
 ## Tính năng
 
-- Duyệt khóa học theo các cấp độ JLPT từ N5 đến N1.
+- Duyệt khóa học theo các cấp độ JLPT từ N5 đến N1, sau đó chọn chế độ **Học**
+  hoặc **Luyện tập**.
+- Tra cứu danh sách từ vựng theo khóa học bằng ô tìm kiếm; mỗi từ hiển thị
+  Kanji, cách đọc, nghĩa tiếng Việt và nút phát âm.
 - Làm bài trắc nghiệm có tính giờ, nghe phát âm từ vựng và âm báo riêng khi trả
   lời đúng, sai hoặc hết giờ.
 - Tự đưa câu trả lời sai hoặc câu chưa trả lời kịp vào danh sách ôn tập; tiếp
@@ -26,21 +29,31 @@ khoản.
 - Nếu cấu hình thay đổi khi có phiên đã lưu chưa hoàn tất, có thể tiếp tục
   phiên đó và áp dụng cấu hình mới cho lượt sau, hoặc làm lại từ đầu để áp
   dụng ngay.
-- Hỗ trợ liên kết trực tiếp đến trang cấp độ hoặc khóa học; tải lại trang không
-  làm mất đường dẫn hiện tại.
+- Dùng đường dẫn dễ đọc cho trang chủ, cấp độ, học từ vựng và luyện tập, ví dụ
+  `/home/level/n3/kanji-goi-n3/benkyou` và
+  `/home/level/n3/kanji-goi-n3/renshuu`; danh sách từ vựng dùng hậu tố `/goi`.
 
 ### Luyện tập
 
 1. Ở trang chủ, chọn cấp độ JLPT.
-2. Chọn khóa học muốn luyện.
-3. Chọn đáp án trước khi hết giờ. Ứng dụng sẽ thông báo kết quả, phát âm từ
-   vựng và tự chuyển sang câu tiếp theo.
-4. Khi kết thúc lượt, xem danh sách từ chưa nhớ và bắt đầu ôn tập.
-5. Hoàn thành các lượt ôn để ghi nhớ từ; xem thống kê khi hoàn tất lượt học.
-6. Khi bắt đầu khóa học, tùy chỉnh số câu, thời gian, thứ tự câu hỏi và chế độ
+2. Chọn khóa học, sau đó chọn **Học** để tra cứu từ vựng hoặc **Luyện tập** để
+   làm bài kiểm tra.
+3. Trong chế độ Học, tìm từ bằng Kanji, cách đọc hoặc nghĩa tiếng Việt; nhấn
+   biểu tượng loa để nghe phát âm.
+4. Trong chế độ Luyện tập, chọn đáp án trước khi hết giờ. Ứng dụng sẽ thông báo
+   kết quả, phát âm từ vựng và tự chuyển sang câu tiếp theo.
+5. Khi kết thúc lượt, xem danh sách từ chưa nhớ và bắt đầu ôn tập.
+6. Hoàn thành các lượt ôn để ghi nhớ từ; xem thống kê khi hoàn tất lượt học.
+7. Khi bắt đầu khóa học, tùy chỉnh số câu, thời gian, thứ tự câu hỏi và chế độ
    làm bài trong popup **Thiết lập bài kiểm tra**. Hiển thị Hán-Việt, phát âm
    từ vựng và cách mở danh sách từ đồng âm có thể đổi trong popup này hoặc
    **Cài đặt**.
+
+Khi triển khai trên máy chủ tĩnh, hãy cấu hình các đường dẫn con chưa khớp tệp
+như `/home/...` để trả về `index.html`, nhằm hỗ trợ mở trực tiếp và tải lại
+đường dẫn hiện tại. Tệp `404.html` hỗ trợ host tĩnh dùng trang 404 tùy chỉnh;
+Live Server trong workspace được cấu hình dùng `index.html` làm SPA fallback.
+Khởi động lại Live Server sau khi cập nhật cấu hình.
 
 Tiến độ và cài đặt được lưu trong bộ nhớ của trình duyệt hiện tại. Xóa dữ liệu
 trình duyệt có thể làm mất các phiên học đã lưu.

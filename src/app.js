@@ -3,6 +3,7 @@ import {
   getActiveCourseKey,
   getSavedSessionStatus,
   getQuizSetupSettings,
+  pauseRenshuuForSettings,
   startRenshuu,
   suspendRenshuu,
   unlockFeedbackAudio,
@@ -14,14 +15,30 @@ import {
   showLevelCourses,
 } from "./pages/home.js";
 import {
+  applyCoursePageLanguage,
+  cancelStudyLoad,
+  showCourseActions,
+  showStudyPage,
+} from "./pages/course-pages.js";
+import {
   getSavedLanguage,
   saveLanguage,
 } from "./services/language-preference.js";
+import {
+  appPathname,
+  courseUrl,
+  homeUrl,
+  levelUrl,
+  routeUrl,
+} from "./utils/routes.js";
 
 const homePage = document.getElementById("homePage");
 const coursesPage = document.getElementById("coursesPage");
+const courseActionsPage = document.getElementById("courseActionsPage");
+const studyPage = document.getElementById("studyPage");
 const quizPage = document.getElementById("quizPage");
 const settingsButton = document.getElementById("settingsButton");
+settingsButton.addEventListener("click", pauseRenshuuForSettings);
 const loadingState = document.getElementById("loadingState");
 const languageSelect = document.getElementById("languageSelect");
 const quizSetupModalElement = document.getElementById("quizSetupModal");
@@ -252,6 +269,7 @@ function syncLanguageUI(language) {
     : `© ${new Date().getFullYear()} Uminohi · 開発: BaoNH4. すべての権利を保有します。`;
   syncQuizSetupLanguage(language);
   applyHomeLanguage(language);
+  applyCoursePageLanguage(language);
 }
 
 function changeLanguage(language) {
@@ -265,29 +283,80 @@ function changeLanguage(language) {
 }
 
 function readRoute() {
-  let parts;
+  if (location.hash.startsWith("#/")) {
+    let legacyParts;
+    try {
+      legacyParts = decodeURIComponent(location.hash.slice(1))
+        .split("/")
+        .filter(Boolean);
+    } catch {
+      return { type: "invalid" };
+    }
+    let legacyRoute = { type: "invalid" };
+    if (!legacyParts.length) {
+      legacyRoute = { type: "home" };
+    } else if (legacyParts.length === 2 && legacyParts[0] === "level") {
+      legacyRoute = { type: "level", levelId: legacyParts[1] };
+    } else if (
+      legacyParts.length === 3 &&
+      legacyParts[0] === "renshuu"
+    ) {
+      legacyRoute = {
+        type: "renshuu",
+        levelId: legacyParts[1],
+        courseId: legacyParts[2],
+      };
+    }
+    if (legacyRoute.type === "invalid") return legacyRoute;
+    history.replaceState(null, "", routeUrl(legacyRoute));
+    return legacyRoute;
+  }
+
+  let pathname;
   try {
-    parts = decodeURIComponent(location.hash.slice(1))
-      .split("/")
-      .filter(Boolean);
+    pathname = decodeURIComponent(location.pathname).replace(/\/+$/, "") || "/";
   } catch {
     return { type: "invalid" };
   }
-  if (!parts.length) return { type: "home" };
-  if (parts.length === 2 && parts[0] === "level") {
-    return { type: "level", levelId: parts[1] };
+  const appRoot = appPathname() || "/";
+  if (pathname === appRoot) {
+    history.replaceState(null, "", homeUrl());
+    return { type: "home" };
   }
-  if (parts.length === 3 && parts[0] === "renshuu") {
-    return { type: "renshuu", levelId: parts[1], courseId: parts[2] };
+  if (pathname === homeUrl()) return { type: "home" };
+
+  const routePrefix = `${homeUrl()}/`;
+  if (pathname.startsWith(routePrefix)) {
+    const parts = pathname.slice(routePrefix.length).split("/");
+    if (parts.length === 2 && parts[0] === "level") {
+      return { type: "level", levelId: parts[1] };
+    }
+    if (parts.length === 4 && parts[0] === "level") {
+      const [, levelId, courseId, mode] = parts;
+      if (mode === "benkyou") return { type: "course", levelId, courseId };
+      if (mode === "goi") return { type: "study", levelId, courseId };
+      if (mode === "hoc") {
+        history.replaceState(
+          null,
+          "",
+          courseUrl(levelId, courseId, "goi")
+        );
+        return { type: "study", levelId, courseId };
+      }
+      if (mode === "renshuu") return { type: "renshuu", levelId, courseId };
+    }
   }
   return { type: "invalid" };
 }
 
 function displayPage(page) {
+  if (page !== "study") cancelStudyLoad();
   document.body.classList.toggle("renshuu-mode", page === "renshuu");
   document.body.classList.toggle("catalog-settings", page !== "renshuu");
   homePage.classList.toggle("d-none", page !== "home");
   coursesPage.classList.toggle("d-none", page !== "courses");
+  courseActionsPage.classList.toggle("d-none", page !== "course");
+  studyPage.classList.toggle("d-none", page !== "study");
   quizPage.classList.toggle("d-none", page !== "renshuu");
   settingsButton.classList.remove("d-none");
 }
@@ -444,6 +513,44 @@ async function route() {
     if (request !== routeRequest) return;
     return;
   }
+  if (current.type === "course" || current.type === "study") {
+    if (!LEVELS.some((level) => level.id === current.levelId)) {
+      document.title = "Trình độ không tồn tại";
+      showCourseError("Trình độ không tồn tại.");
+      displayPage("courses");
+      return;
+    }
+    displayPage(current.type);
+    try {
+      const course = await getCourse(current.levelId, current.courseId);
+      if (request !== routeRequest) return;
+      if (!course) {
+        document.title = "Khóa học không tồn tại";
+        showCourseError("Khóa học không tồn tại hoặc URL không hợp lệ.");
+        displayPage("courses");
+        return;
+      }
+      if (current.type === "course") {
+        document.title = `${course.name} · Khóa học`;
+        showCourseActions(current.levelId, course);
+      } else {
+        document.title = `${course.name} · Học từ vựng`;
+        await showStudyPage(current.levelId, course);
+        if (request !== routeRequest) return;
+      }
+    } catch (error) {
+      if (request !== routeRequest) return;
+      if (current.type === "study") {
+        const status = document.getElementById("studyStatus");
+        status.className = "study-status text-danger";
+        status.textContent = `Không thể tải từ vựng: ${error.message}`;
+      } else {
+        showCourseError(`Không thể tải khóa học: ${error.message}`);
+        displayPage("courses");
+      }
+    }
+    return;
+  }
   if (current.type === "renshuu") {
     document.title = "Renshuu · JLPT 語彙クイズ";
     displayPage("renshuu");
@@ -470,12 +577,12 @@ async function route() {
         return;
       }
       document.title = `${course.name} · Renshuu`;
-      document.getElementById("selectedCourseName").textContent = course.name;
-      const levelUrl = `#/level/${current.levelId}`;
       const courseLevelLink = document.getElementById("renshuuCourseLevelLink");
-      courseLevelLink.href = levelUrl;
+      courseLevelLink.href = levelUrl(current.levelId);
       courseLevelLink.textContent = current.levelId.toUpperCase();
-      document.getElementById("renshuuLevelLink").href = levelUrl;
+      const courseLink = document.getElementById("renshuuCourseLink");
+      courseLink.href = courseUrl(current.levelId, course.id);
+      courseLink.textContent = course.name;
       if (activeCourseKey === courseKey) {
         loadingState.classList.remove("d-none");
       }
@@ -523,7 +630,8 @@ cancelQuizSetupButton.addEventListener("click", () => {
   const { levelId } = pendingCourseStart;
   pendingCourseStart = null;
   quizSetupModal.hide();
-  location.hash = `#/level/${levelId}`;
+  history.pushState(null, "", levelUrl(levelId));
+  route();
 });
 startQuizSetupButton.addEventListener("click", async () => {
   if (!pendingCourseStart) return;
@@ -587,6 +695,38 @@ startQuizSetupButton.addEventListener("click", async () => {
 });
 
 window.addEventListener("hashchange", route);
+window.addEventListener("popstate", route);
+document.addEventListener("click", (event) => {
+  if (
+    event.defaultPrevented ||
+    event.button !== 0 ||
+    event.metaKey ||
+    event.ctrlKey ||
+    event.shiftKey ||
+    event.altKey
+  ) {
+    return;
+  }
+  const link =
+    event.target instanceof Element ? event.target.closest("a[href]") : null;
+  if (!link || link.target || link.hasAttribute("download")) return;
+  const targetUrl = new URL(link.href, location.href);
+  const appHome = homeUrl();
+  if (
+    targetUrl.origin !== location.origin ||
+    (targetUrl.pathname !== appHome &&
+      !targetUrl.pathname.startsWith(`${appHome}/`))
+  ) {
+    return;
+  }
+  event.preventDefault();
+  history.pushState(
+    null,
+    "",
+    `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`
+  );
+  route();
+});
 window.addEventListener("app-language-change", (event) => {
   syncLanguageUI(event.detail.language);
 });
@@ -598,6 +738,12 @@ document.querySelectorAll(".language-option").forEach((option) => {
     changeLanguage(option.dataset.language)
   );
 });
+document.querySelectorAll(".home-route-link").forEach((link) => {
+  link.href = homeUrl();
+});
 syncLanguageUI(getSavedLanguage());
-if (!location.hash) history.replaceState(null, "", `${location.pathname}${location.search}#/`);
+const recoveredPath = new URLSearchParams(location.search).get("__route");
+if (recoveredPath?.startsWith("/home")) {
+  history.replaceState(null, "", `${appPathname()}${recoveredPath}`);
+}
 route();

@@ -5,6 +5,15 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>JLPT 語彙クイズ</title>
+    <script>
+        const routeMarker = location.pathname.indexOf("/home");
+        const appBase = routeMarker >= 0
+            ? location.pathname.slice(0, routeMarker)
+            : location.pathname.replace(/\/(?:index\.html)?$/, "");
+        const baseElement = document.createElement("base");
+        baseElement.href = `${appBase || ""}/`;
+        document.head.appendChild(baseElement);
+    </script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
@@ -32,8 +41,8 @@
         <div class="header-wave header-wave-green"></div>
         <div class="container-fluid header-inner">
             <div class="header-brand-group">
-                <a class="header-logo" href="#/" aria-label="Trang chủ"><img src="logo.jpg" alt="Logo"></a>
-                <a class="brand header-brand" href="#/">
+                <a class="header-logo home-route-link" href="/home" aria-label="Trang chủ"><img src="logo.jpg" alt="Logo"></a>
+                <a class="brand header-brand home-route-link" href="/home">
                     <h1 id="brandTitle">海の日</h1>
                 </a>
             </div>
@@ -53,7 +62,7 @@
         <section id="coursesPage" class="courses-page d-none">
             <nav class="renshuu-navigation" aria-label="Điều hướng trình độ">
                 <div class="renshuu-breadcrumb">
-                    <a class="home-icon-link" href="#/" aria-label="Trang chủ" title="Trang chủ">
+                    <a class="home-icon-link home-route-link" href="/home" aria-label="Trang chủ" title="Trang chủ">
                         <i class="bi bi-house-door-fill" aria-hidden="true"></i>
                     </a>
                     <i class="bi bi-chevron-right breadcrumb-separator" aria-hidden="true"></i>
@@ -66,21 +75,90 @@
             <p id="courseStatus" class="course-status" role="status" aria-live="polite"></p>
             <div id="courseList" class="course-grid"></div>
         </section>
+        <section id="courseActionsPage" class="course-selection-page d-none">
+            <nav id="courseActionsNavigation" class="renshuu-navigation" aria-label="Điều hướng khóa học">
+                <div class="renshuu-breadcrumb">
+                    <a id="courseActionsHomeLink" class="home-icon-link home-route-link" href="/home"
+                        aria-label="Trang chủ" title="Trang chủ">
+                        <i class="bi bi-house-door-fill" aria-hidden="true"></i>
+                    </a>
+                    <i class="bi bi-chevron-right breadcrumb-separator" aria-hidden="true"></i>
+                    <a id="courseActionsLevelLink" class="back-link" href="/home/level/n3">N3</a>
+                    <i class="bi bi-chevron-right breadcrumb-separator" aria-hidden="true"></i>
+                    <span id="courseActionsCourseName" class="selected-course-name"></span>
+                </div>
+            </nav>
+            <div class="home-heading courses-heading">
+                <p id="courseActionsEyebrow" class="home-eyebrow">CHỌN CÁCH HỌC</p>
+            </div>
+            <div class="course-grid course-mode-grid">
+                <a id="studyModeLink" class="course-card course-mode-card"
+                    href="/home/level/n3/kanji-goi-n3/goi">
+                    <span class="course-mode-icon" aria-hidden="true">
+                        <i class="bi bi-journal-text"></i>
+                    </span>
+                    <h2 id="studyModeTitle">Học</h2>
+                    <p id="studyModeDescription">Xem danh sách từ vựng và nghe cách đọc.</p>
+                    <span class="course-card-action">
+                        <span id="studyModeAction">Mở danh sách từ vựng</span>
+                        <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                    </span>
+                </a>
+                <a id="practiceModeLink" class="course-card course-mode-card"
+                    href="/home/level/n3/kanji-goi-n3/renshuu">
+                    <span class="course-mode-icon practice" aria-hidden="true">
+                        <i class="bi bi-ui-checks"></i>
+                    </span>
+                    <h2 id="practiceModeTitle">Luyện tập</h2>
+                    <p id="practiceModeDescription">Làm bài kiểm tra để ghi nhớ từ vựng.</p>
+                    <span class="course-card-action">
+                        <span id="practiceModeAction">Bắt đầu luyện tập</span>
+                        <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                    </span>
+                </a>
+            </div>
+        </section>
+        <section id="studyPage" class="study-page d-none">
+            <nav id="studyNavigation" class="renshuu-navigation" aria-label="Điều hướng danh sách từ vựng">
+                <div class="renshuu-breadcrumb">
+                    <a id="studyHomeLink" class="home-icon-link home-route-link" href="/home"
+                        aria-label="Trang chủ" title="Trang chủ">
+                        <i class="bi bi-house-door-fill" aria-hidden="true"></i>
+                    </a>
+                    <i class="bi bi-chevron-right breadcrumb-separator" aria-hidden="true"></i>
+                    <a id="studyLevelLink" class="back-link" href="/home/level/n3">N3</a>
+                    <i class="bi bi-chevron-right breadcrumb-separator" aria-hidden="true"></i>
+                    <a id="studyCourseLink" class="back-link study-course-link"
+                        href="/home/level/n3/kanji-goi-n3/benkyou"></a>
+                    <i class="bi bi-chevron-right breadcrumb-separator" aria-hidden="true"></i>
+                    <span id="studyBreadcrumbTitle" class="selected-course-name">Học</span>
+                </div>
+            </nav>
+            <div class="study-heading">
+                <h2 id="studyTitle">Danh sách từ vựng</h2>
+                <div class="study-search">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input id="studySearchInput" type="search" autocomplete="off"
+                        aria-label="Tìm từ vựng trong khóa học" placeholder="Tìm từ vựng...">
+                </div>
+            </div>
+            <p id="studyStatus" class="study-status" role="status" aria-live="polite"></p>
+            <div id="vocabularyList" class="study-vocabulary-list"></div>
+        </section>
         <section id="quizPage" class="d-none">
         <section class="quiz-container mx-auto">
             <nav class="renshuu-navigation" aria-label="Điều hướng khóa học">
                 <div class="renshuu-breadcrumb">
-                    <a class="home-icon-link" href="#/" aria-label="Trang chủ" title="Trang chủ">
+                    <a class="home-icon-link home-route-link" href="/home" aria-label="Trang chủ" title="Trang chủ">
                         <i class="bi bi-house-door-fill" aria-hidden="true"></i>
                     </a>
                     <i class="bi bi-chevron-right breadcrumb-separator" aria-hidden="true"></i>
-                    <a id="renshuuCourseLevelLink" class="back-link" href="#/level/n3">N3</a>
+                    <a id="renshuuCourseLevelLink" class="back-link" href="/home/level/n3">N3</a>
                     <i class="bi bi-chevron-right breadcrumb-separator" aria-hidden="true"></i>
-                    <a id="renshuuLevelLink" class="back-link" href="#/">
-                        Khóa học
-                    </a>
+                    <a id="renshuuCourseLink" class="back-link renshuu-course-link"
+                        href="/home/level/n3/kanji-goi-n3/benkyou"></a>
                     <i class="bi bi-chevron-right breadcrumb-separator" aria-hidden="true"></i>
-                    <span id="selectedCourseName" class="selected-course-name"></span>
+                    <span id="renshuuModeLabel" class="selected-course-name">練習</span>
                 </div>
             </nav>
             <div id="alertRegion"></div>

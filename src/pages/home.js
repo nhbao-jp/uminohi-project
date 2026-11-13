@@ -126,7 +126,7 @@ export function applyHomeLanguage(language) {
   document.querySelector("#quizPage .home-icon-link").title =
     currentLanguage === "vi" ? "Trang chủ" : "ホーム";
   document.getElementById("renshuuLevelLink").textContent =
-    currentLanguage === "vi" ? "Danh sách khóa học" : "コース一覧";
+    currentLanguage === "vi" ? "Khóa học" : "コース";
   document.querySelector(".courses-page > .renshuu-navigation").setAttribute(
     "aria-label",
     currentLanguage === "vi" ? "Điều hướng trình độ" : "レベルのナビゲーション"

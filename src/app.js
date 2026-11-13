@@ -1,6 +1,8 @@
 import { getCourse, LEVELS } from "./services/course-catalog.js";
 import {
   getActiveCourseKey,
+  configureQuizSettings,
+  getQuizSetupSettings,
   initRenshuu,
   resumeRenshuu,
   suspendRenshuu,
@@ -22,7 +24,31 @@ const quizPage = document.getElementById("quizPage");
 const settingsButton = document.getElementById("settingsButton");
 const loadingState = document.getElementById("loadingState");
 const languageSelect = document.getElementById("languageSelect");
+const quizSetupModalElement = document.getElementById("quizSetupModal");
+const quizSetupModal = new bootstrap.Modal(quizSetupModalElement);
+const setupRandomQuestionToggle = document.getElementById(
+  "setupRandomQuestionToggle"
+);
+const setupTimeoutValue = document.getElementById("setupTimeoutValue");
+const setupScopeSizeSelect = document.getElementById("setupScopeSizeSelect");
+const setupCustomScopeValue = document.getElementById("setupCustomScopeValue");
+const setupCustomScopeWrap = document.getElementById("setupCustomScopeWrap");
+const setupTwoAnswerModeToggle = document.getElementById(
+  "setupTwoAnswerModeToggle"
+);
+const setupOptimizedQuizToggle = document.getElementById(
+  "setupOptimizedQuizToggle"
+);
+const startQuizSetupButton = document.getElementById("startQuizSetupButton");
+const cancelQuizSetupButton = document.getElementById("cancelQuizSetupButton");
+const startCountdownOverlay = document.getElementById("startCountdownOverlay");
+const startCountdownText = document.getElementById("startCountdownText");
 let routeRequest = 0;
+let pendingCourseStart = null;
+let startingCourseKey = null;
+let countdownTimeoutId = null;
+let countdownToken = 0;
+let resolveCountdown = null;
 
 function renderBrandTitle() {
   const brandTitle = document.getElementById("brandTitle");
@@ -40,6 +66,102 @@ function renderBrandTitle() {
     document.createTextNode("noh"),
     createDottedI()
   );
+}
+
+function syncQuizSetupLanguage(language) {
+  const isVietnamese = language === "vi";
+  const copy = isVietnamese
+    ? {
+        title: "Thiết lập bài kiểm tra",
+        random: "Ngẫu nhiên câu hỏi",
+        randomDescription: "Xáo trộn thứ tự câu hỏi khi bắt đầu mỗi lượt.",
+        timeout: "Thời gian trả lời",
+        timeoutDescription: "Chọn từ 3 đến 30 giây cho mỗi câu hỏi.",
+        scope: "Số lượng câu hỏi",
+        scopeDescription: "Chọn số câu hỏi cho lượt kiểm tra này.",
+        custom: "Tùy chỉnh",
+        full: "Tất cả câu hỏi",
+        twoAnswer: "Chế độ 2 đáp án",
+        twoAnswerDescription: "Chỉ hiển thị đáp án đúng và một đáp án nhiễu.",
+        optimized: "Tối ưu giao diện kiểm tra",
+        optimizedDescription: "Ẩn thống kê, tiến độ và footer khi trả lời.",
+        seconds: "giây",
+        questions: "câu",
+        decrease: "Giảm 1 giây",
+        increase: "Tăng 1 giây",
+        scopeAria: "Số lượng câu hỏi",
+        customScopeAria: "Số câu hỏi tùy chỉnh",
+        cancel: "Hủy",
+        start: "Bắt đầu",
+      }
+    : {
+        title: "テストの設定",
+        random: "問題をランダムに出題",
+        randomDescription: "各ラウンドの開始時に問題の順序をシャッフルします。",
+        timeout: "回答時間",
+        timeoutDescription: "1問あたり3〜30秒で設定できます。",
+        scope: "問題数",
+        scopeDescription: "今回のテストで出題する問題数を選択します。",
+        custom: "カスタム",
+        full: "全問題",
+        twoAnswer: "2択モード",
+        twoAnswerDescription: "正解と1つの選択肢を表示します。",
+        optimized: "テスト画面を最適化",
+        optimizedDescription: "回答中は統計・進捗・フッターを非表示にします。",
+        seconds: "秒",
+        questions: "問",
+        decrease: "1秒減らす",
+        increase: "1秒増やす",
+        scopeAria: "問題数",
+        customScopeAria: "カスタム問題数",
+        cancel: "キャンセル",
+        start: "開始",
+      };
+  document.getElementById("quizSetupTitle").textContent = copy.title;
+  document.querySelector('label[for="setupRandomQuestionToggle"]').textContent =
+    copy.random;
+  document.querySelector('[data-setup-description="random"]').textContent =
+    copy.randomDescription;
+  document.querySelector('label[for="setupTimeoutValue"]').textContent =
+    copy.timeout;
+  document.querySelector('[data-setup-description="timeout"]').textContent =
+    copy.timeoutDescription;
+  document.querySelector('label[for="setupScopeSizeSelect"]').textContent =
+    copy.scope;
+  document.querySelector('[data-setup-description="scope"]').textContent =
+    copy.scopeDescription;
+  document.querySelector(
+    'label[for="setupTwoAnswerModeToggle"]'
+  ).textContent = copy.twoAnswer;
+  document.querySelector('[data-setup-description="twoAnswer"]').textContent =
+    copy.twoAnswerDescription;
+  document.querySelector(
+    'label[for="setupOptimizedQuizToggle"]'
+  ).textContent = copy.optimized;
+  document.querySelector('[data-setup-description="optimized"]').textContent =
+    copy.optimizedDescription;
+  setupScopeSizeSelect.querySelector('[value="custom"]').textContent =
+    copy.custom;
+  setupScopeSizeSelect.querySelector('[value="full"]').textContent =
+    copy.full;
+  document.getElementById("setupTimeoutUnitText").textContent = copy.seconds;
+  document.getElementById("setupScopeUnitText").textContent = copy.questions;
+  document
+    .getElementById("setupDecreaseTimeoutButton")
+    .setAttribute("aria-label", copy.decrease);
+  document
+    .getElementById("setupIncreaseTimeoutButton")
+    .setAttribute("aria-label", copy.increase);
+  document
+    .querySelector("#quizSetupModal .timeout-stepper")
+    .setAttribute(
+      "aria-label",
+      isVietnamese ? "Điều chỉnh thời gian trả lời" : "回答時間の調整"
+    );
+  setupScopeSizeSelect.setAttribute("aria-label", copy.scopeAria);
+  setupCustomScopeValue.setAttribute("aria-label", copy.customScopeAria);
+  cancelQuizSetupButton.textContent = copy.cancel;
+  startQuizSetupButton.querySelector("span").textContent = copy.start;
 }
 
 function syncLanguageUI(language) {
@@ -74,6 +196,7 @@ function syncLanguageUI(language) {
   document.getElementById("footerCreditText").textContent = isVietnamese
     ? `Copyright © ${new Date().getFullYear()} Uminohi · Developed by BaoNH4. All rights reserved.`
     : `© ${new Date().getFullYear()} Uminohi · 開発: BaoNH4. すべての権利を保有します。`;
+  syncQuizSetupLanguage(language);
   applyHomeLanguage(language);
 }
 
@@ -115,9 +238,121 @@ function displayPage(page) {
   settingsButton.classList.remove("d-none");
 }
 
+function updateSetupCustomScope() {
+  setupCustomScopeWrap.classList.toggle(
+    "d-none",
+    setupScopeSizeSelect.value !== "custom"
+  );
+}
+
+function cancelStartCountdown() {
+  countdownToken++;
+  clearTimeout(countdownTimeoutId);
+  countdownTimeoutId = null;
+  startCountdownOverlay.classList.add("d-none");
+  if (resolveCountdown) {
+    resolveCountdown(false);
+    resolveCountdown = null;
+  }
+  startingCourseKey = null;
+}
+
+function runStartCountdown(courseKey) {
+  const token = ++countdownToken;
+  const messages =
+    document.documentElement.lang === "vi"
+      ? ["3", "2", "1", "Bắt đầu"]
+      : ["3", "2", "1", "スタート"];
+  startingCourseKey = courseKey;
+  startCountdownOverlay.classList.remove("d-none");
+
+  return new Promise((resolve) => {
+    resolveCountdown = resolve;
+    let index = 0;
+    const advance = () => {
+      if (token !== countdownToken) return;
+      if (index >= messages.length) {
+        startCountdownOverlay.classList.add("d-none");
+        countdownTimeoutId = null;
+        resolveCountdown = null;
+        resolve(true);
+        return;
+      }
+      startCountdownText.textContent = messages[index++];
+      startCountdownText.classList.toggle(
+        "is-word",
+        index === messages.length
+      );
+      startCountdownText.classList.remove("is-changing");
+      void startCountdownText.offsetWidth;
+      startCountdownText.classList.add("is-changing");
+      countdownTimeoutId = setTimeout(advance, 900);
+    };
+    advance();
+  });
+}
+
+function showQuizSetup(course, courseKey, levelId) {
+  const settings = getQuizSetupSettings();
+  setupRandomQuestionToggle.checked = settings.randomQuestions;
+  setupTimeoutValue.value = settings.questionTimeSeconds;
+  setupScopeSizeSelect.value =
+    settings.scopeMode === "full"
+      ? "full"
+      : settings.scopeMode === "preset" &&
+        [...setupScopeSizeSelect.options].some(
+          (option) => option.value === String(settings.scopeSize)
+        )
+      ? String(settings.scopeSize)
+      : "custom";
+  setupCustomScopeValue.value = settings.scopeSize;
+  setupTwoAnswerModeToggle.checked = settings.twoAnswerMode;
+  setupOptimizedQuizToggle.checked = settings.optimizedQuizUI;
+  updateSetupCustomScope();
+  pendingCourseStart = { course, courseKey, levelId };
+  quizSetupModal.show();
+}
+
+function readQuizSetupSettings() {
+  const scopeMode =
+    setupScopeSizeSelect.value === "full"
+      ? "full"
+      : setupScopeSizeSelect.value === "custom"
+      ? "custom"
+      : "preset";
+  const scopeSize =
+    scopeMode === "custom"
+      ? Math.max(1, Math.round(Number(setupCustomScopeValue.value) || 50))
+      : scopeMode === "full"
+      ? getQuizSetupSettings().scopeSize
+      : Number(setupScopeSizeSelect.value);
+  return {
+    randomQuestions: setupRandomQuestionToggle.checked,
+    questionTimeSeconds: Math.min(
+      30,
+      Math.max(3, Math.round(Number(setupTimeoutValue.value) || 5))
+    ),
+    scopeMode,
+    scopeSize,
+    twoAnswerMode: setupTwoAnswerModeToggle.checked,
+    optimizedQuizUI: setupOptimizedQuizToggle.checked,
+  };
+}
+
 async function route() {
   const request = ++routeRequest;
   const current = readRoute();
+  const pendingRouteKey =
+    current.type === "renshuu"
+      ? `${current.levelId}/${current.courseId}`
+      : null;
+  if (startingCourseKey && pendingRouteKey !== startingCourseKey) {
+    cancelStartCountdown();
+  }
+  if (pendingCourseStart && pendingRouteKey !== pendingCourseStart.courseKey) {
+    pendingCourseStart = null;
+    quizSetupModal.hide();
+  }
   const activeCourseKey = getActiveCourseKey();
   const routeCourseKey =
     current.type === "renshuu"
@@ -177,11 +412,9 @@ async function route() {
       courseLevelLink.textContent = current.levelId.toUpperCase();
       document.getElementById("renshuuLevelLink").href = levelUrl;
       if (activeCourseKey === courseKey) {
-        loadingState.classList.add("d-none");
-        resumeRenshuu();
-      } else {
-        await initRenshuu(course.datasetUrl, courseKey);
+        loadingState.classList.remove("d-none");
       }
+      showQuizSetup(course, courseKey, current.levelId);
     } catch (error) {
       if (request !== routeRequest) return;
       loadingState.classList.add("d-none");
@@ -196,6 +429,78 @@ async function route() {
   showCourseError("Đường dẫn không hợp lệ.");
   displayPage("courses");
 }
+
+setupScopeSizeSelect.addEventListener("change", updateSetupCustomScope);
+document
+  .getElementById("setupDecreaseTimeoutButton")
+  .addEventListener("click", () => {
+    setupTimeoutValue.value = Math.max(
+      3,
+      (Number(setupTimeoutValue.value) || 5) - 1
+    );
+  });
+document
+  .getElementById("setupIncreaseTimeoutButton")
+  .addEventListener("click", () => {
+    setupTimeoutValue.value = Math.min(
+      30,
+      (Number(setupTimeoutValue.value) || 5) + 1
+    );
+  });
+setupTimeoutValue.addEventListener("change", () => {
+  setupTimeoutValue.value = Math.min(
+    30,
+    Math.max(3, Math.round(Number(setupTimeoutValue.value) || 5))
+  );
+});
+cancelQuizSetupButton.addEventListener("click", () => {
+  if (!pendingCourseStart) return;
+  const { levelId } = pendingCourseStart;
+  pendingCourseStart = null;
+  quizSetupModal.hide();
+  location.hash = `#/level/${levelId}`;
+});
+startQuizSetupButton.addEventListener("click", async () => {
+  if (!pendingCourseStart) return;
+  const courseStart = pendingCourseStart;
+  pendingCourseStart = null;
+  startingCourseKey = courseStart.courseKey;
+  startQuizSetupButton.disabled = true;
+  configureQuizSettings(readQuizSetupSettings());
+  const modalHidden = new Promise((resolve) => {
+    quizSetupModalElement.addEventListener("hidden.bs.modal", resolve, {
+      once: true,
+    });
+  });
+  quizSetupModal.hide();
+  await modalHidden;
+  if (startingCourseKey !== courseStart.courseKey) {
+    startQuizSetupButton.disabled = false;
+    return;
+  }
+  const countdownFinished = await runStartCountdown(courseStart.courseKey);
+  if (!countdownFinished) {
+    startQuizSetupButton.disabled = false;
+    return;
+  }
+  startingCourseKey = null;
+  try {
+    if (getActiveCourseKey() === courseStart.courseKey) {
+      loadingState.classList.add("d-none");
+      resumeRenshuu();
+    } else {
+      await initRenshuu(courseStart.course.datasetUrl, courseStart.courseKey);
+    }
+  } catch (error) {
+    loadingState.classList.add("d-none");
+    const alert = document.createElement("div");
+    alert.className = "alert alert-danger";
+    alert.textContent = `Không thể bắt đầu khóa học: ${error.message}`;
+    document.getElementById("alertRegion").appendChild(alert);
+  } finally {
+    startQuizSetupButton.disabled = false;
+  }
+});
 
 window.addEventListener("hashchange", route);
 window.addEventListener("app-language-change", (event) => {

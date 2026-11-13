@@ -1217,6 +1217,90 @@ export function getActiveCourseKey() {
   return activeCourseKey;
 }
 
+export function getQuizSetupSettings() {
+  let savedSettings = {};
+  try {
+    savedSettings = JSON.parse(localStorage.getItem(SETTING_KEY) || "{}");
+    if (!savedSettings || typeof savedSettings !== "object") {
+      savedSettings = {};
+    }
+  } catch (error) {
+    console.warn("設定を読み込めませんでした。", error);
+  }
+  const savedScopeMode = ["preset", "custom", "full"].includes(
+    savedSettings.scopeMode
+  )
+    ? savedSettings.scopeMode
+    : scopeMode;
+  return {
+    randomQuestions:
+      typeof savedSettings.randomQuestions === "boolean"
+        ? savedSettings.randomQuestions
+        : randomQuestions,
+    questionTimeSeconds: Math.min(
+      30,
+      Math.max(
+        3,
+        Number(savedSettings.questionTimeSeconds) ||
+          QUESTION_TIME_MS / 1000
+      )
+    ),
+    scopeMode: savedScopeMode,
+    scopeSize: Math.max(
+      1,
+      Math.round(Number(savedSettings.scopeSize) || scopeSize)
+    ),
+    optimizedQuizUI:
+      typeof savedSettings.optimizedQuizUI === "boolean"
+        ? savedSettings.optimizedQuizUI
+        : optimizedQuizUI,
+    twoAnswerMode:
+      typeof savedSettings.twoAnswerMode === "boolean"
+        ? savedSettings.twoAnswerMode
+        : twoAnswerMode,
+  };
+}
+
+export function configureQuizSettings(settings) {
+  randomQuestions = settings.randomQuestions === true;
+  optimizedQuizUI = settings.optimizedQuizUI === true;
+  twoAnswerMode = settings.twoAnswerMode === true;
+  QUESTION_TIME_MS =
+    Math.min(30, Math.max(3, Number(settings.questionTimeSeconds) || 5)) *
+    1000;
+  timerRemainingMs = QUESTION_TIME_MS;
+  scopeMode = ["preset", "custom", "full"].includes(settings.scopeMode)
+    ? settings.scopeMode
+    : "preset";
+  scopeSize = Math.min(
+    1_000_000,
+    Math.max(1, Math.round(Number(settings.scopeSize) || 50))
+  );
+  if (isInitialized) {
+    e.randomQuestionToggle.checked = randomQuestions;
+    e.optimizedQuizToggle.checked = optimizedQuizUI;
+    e.twoAnswerModeToggle.checked = twoAnswerMode;
+    e.timeoutValue.value = QUESTION_TIME_MS / 1000;
+    e.scopeSizeSelect.value =
+      scopeMode === "full"
+        ? "full"
+        : scopeMode === "preset" &&
+          [...e.scopeSizeSelect.options].some(
+            (option) => option.value === String(scopeSize)
+          )
+        ? String(scopeSize)
+        : "custom";
+    e.customScopeValue.value = scopeSize;
+    e.customScopeWrap.classList.toggle(
+      "d-none",
+      e.scopeSizeSelect.value !== "custom"
+    );
+    updateScopeStatus();
+    updateOptimizedQuizLayout();
+  }
+  persistSettings();
+}
+
 export async function initRenshuu(datasetUrl, courseKey) {
   if (isInitialized) {
     if (

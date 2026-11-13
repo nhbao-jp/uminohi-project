@@ -299,15 +299,13 @@ body {
 
 .answer-shortcut {
     position: absolute;
-    top: .5rem;
-    left: .55rem;
-    width: 1.55rem;
-    height: 1.55rem;
-    border-radius: .45rem;
-    background: #f0f1f8;
-    display: grid;
-    place-items: center;
-    font-weight: 800
+    top: .65rem;
+    left: .75rem;
+    color: var(--muted);
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .12em;
+    line-height: 1.35;
 }
 
 .answer-value {
@@ -1056,9 +1054,7 @@ body.catalog-settings .settings-list .setting-item:not(.language-setting) {
 
 .answer-card:hover:not(:disabled) .answer-shortcut,
 .answer-card:focus-visible:not(:disabled) .answer-shortcut {
-    color: #fff;
-    background: var(--primary);
-    transform: scale(1.08);
+    color: var(--primary);
 }
 
 .answer-card:hover:not(:disabled) .answer-value,
@@ -1087,12 +1083,6 @@ body.catalog-settings .settings-list .setting-item:not(.language-setting) {
         border-color: transparent;
         background: #fff;
         box-shadow: 0 .45rem 1.2rem rgba(31, 41, 55, .08);
-    }
-
-    .answer-card:hover:not(:disabled) .answer-shortcut {
-        color: inherit;
-        background: #f0f1f8;
-        transform: none;
     }
 
     .answer-card:hover:not(:disabled) .answer-value {

@@ -24,9 +24,28 @@ const loadingState = document.getElementById("loadingState");
 const languageSelect = document.getElementById("languageSelect");
 let routeRequest = 0;
 
+function renderBrandTitle() {
+  const brandTitle = document.getElementById("brandTitle");
+  const createDottedI = () => {
+    const letter = document.createElement("span");
+    letter.className = "brand-title-i";
+    letter.textContent = "ı";
+    letter.setAttribute("aria-hidden", "true");
+    return letter;
+  };
+  brandTitle.setAttribute("aria-label", "Uminohi");
+  brandTitle.replaceChildren(
+    document.createTextNode("Um"),
+    createDottedI(),
+    document.createTextNode("noh"),
+    createDottedI()
+  );
+}
+
 function syncLanguageUI(language) {
   const isVietnamese = language === "vi";
   document.documentElement.lang = language;
+  renderBrandTitle();
   settingsButton.setAttribute("aria-label", isVietnamese ? "Cài đặt" : "設定");
   settingsButton.title = isVietnamese ? "Cài đặt" : "設定";
   document.getElementById("settingsTitle").innerHTML = isVietnamese
@@ -53,8 +72,8 @@ function syncLanguageUI(language) {
     option.classList.toggle("active", option.dataset.language === language);
   });
   document.getElementById("footerCreditText").textContent = isVietnamese
-    ? `Bản quyền © ${new Date().getFullYear()} Uminohi · Phát triển bởi BaoNH4 (nhbao.work@gmail.com). Bảo lưu mọi quyền.`
-    : `© ${new Date().getFullYear()} Uminohi · 開発: BaoNH4 (nhbao.work@gmail.com). すべての権利を保有します。`;
+    ? `Copyright © ${new Date().getFullYear()} Uminohi · Developed by BaoNH4. All rights reserved.`
+    : `© ${new Date().getFullYear()} Uminohi · 開発: BaoNH4. すべての権利を保有します。`;
   applyHomeLanguage(language);
 }
 

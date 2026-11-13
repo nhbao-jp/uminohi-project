@@ -100,7 +100,7 @@ const I18N = {
     nextBatch: "次の問題セットへ",
     resetAll: "すべてリセット",
     footerCredit: (year) =>
-      `© ${year} Uminohi · 開発: BaoNH4 (nhbao.work@gmail.com). すべての権利を保有します。`,
+      `© ${year} Uminohi · 開発: BaoNH4. すべての権利を保有します。`,
     loading: "データセットを読み込んでいます...",
     customScope: "カスタム",
     fullScope: "全問題",
@@ -175,7 +175,7 @@ const I18N = {
     nextBatch: "Bộ câu hỏi tiếp theo",
     resetAll: "Đặt lại tất cả",
     footerCredit: (year) =>
-      `Bản quyền © ${year} Uminohi · Phát triển bởi BaoNH4 (nhbao.work@gmail.com). Bảo lưu mọi quyền.`,
+      `Copyright © ${year} Uminohi · Developed by BaoNH4. All rights reserved.`,
     loading: "Đang tải dữ liệu...",
     customScope: "Tùy chỉnh",
     fullScope: "Tất cả câu hỏi",

@@ -1,39 +1,35 @@
-# JLPT Vocabulary Quiz
+# Uminohi — JLPT Vocabulary Quiz
 
-Static JLPT vocabulary practice app. The home page lists JLPT levels, each
-level reads its course catalog from `dataset/<level>/courses.json`, and each
-course points to a text dataset in the same folder.
+Uminohi là ứng dụng web tĩnh giúp người học luyện từ vựng và kanji JLPT qua
+các câu hỏi trắc nghiệm có giới hạn thời gian. Ứng dụng hỗ trợ giao diện tiếng
+Việt và tiếng Nhật, hoạt động trực tiếp trên trình duyệt và không yêu cầu tài
+khoản.
 
-## Run locally
+## Tính năng
 
-Serve the repository root over HTTP (ES modules and dataset fetches do not work
-from `file://` URLs), for example:
+- Duyệt khóa học theo các cấp độ JLPT từ N5 đến N1.
+- Làm bài trắc nghiệm có tính giờ, nghe phát âm từ vựng và xem giải thích sau
+  khi chọn đáp án.
+- Tự đưa câu trả lời sai hoặc câu chưa trả lời kịp vào danh sách ôn tập; tiếp
+  tục ôn đến khi ghi nhớ.
+- Theo dõi số câu đúng, số từ đã nhớ/chưa nhớ, số lượt ôn và tiến độ khóa học.
+- Chọn số câu cho mỗi lượt: 10, 20, 50, 100, số lượng tùy chỉnh hoặc toàn bộ.
+- Tùy chỉnh thời gian trả lời từ 3 đến 30 giây, thứ tự câu hỏi và chế độ 2 đáp
+  án.
+- Lưu tiến độ và cài đặt trên trình duyệt để có thể tiếp tục phiên học sau.
+- Hỗ trợ liên kết trực tiếp đến trang cấp độ hoặc khóa học; tải lại trang không
+  làm mất đường dẫn hiện tại.
 
-```sh
-python3 -m http.server 8000
-```
+### Luyện tập
 
-Open `http://localhost:8000/`. Routes are stored in the URL hash, so direct
-links and browser refresh work on static hosting:
+1. Ở trang chủ, chọn cấp độ JLPT.
+2. Chọn khóa học muốn luyện.
+3. Chọn đáp án trước khi hết giờ. Ứng dụng sẽ thông báo kết quả, phát âm từ
+   vựng và tự chuyển sang câu tiếp theo.
+4. Khi kết thúc lượt, xem danh sách từ chưa nhớ và bắt đầu ôn tập.
+5. Hoàn thành các lượt ôn để ghi nhớ từ; xem thống kê khi hoàn tất lượt học.
+6. Mở **Cài đặt** để đổi ngôn ngữ hoặc điều chỉnh số câu, thời gian, thứ tự
+   câu hỏi và chế độ làm bài.
 
-- `#/` — Home and level list
-- `#/level/n3` — courses for a level
-- `#/renshuu/n3/tong-hop-tu-vung-n3` — selected course practice page
-
-## Add a course
-
-1. Put the course dataset in `dataset/<level>/`.
-2. Add an entry to that level's `courses.json`:
-
-   ```json
-   {
-     "id": "course-slug",
-     "name": "Course name",
-     "description": "Optional course summary.",
-     "dataset": "course-file.txt"
-   }
-   ```
-
-The dataset keeps the existing eight-column `*`-delimited format. Course IDs
-must be lowercase URL slugs, and the dataset filename must be a `.txt` file in
-the same level folder. Each course has an independent saved practice session.
+Tiến độ và cài đặt được lưu trong bộ nhớ của trình duyệt hiện tại. Xóa dữ liệu
+trình duyệt có thể làm mất các phiên học đã lưu.

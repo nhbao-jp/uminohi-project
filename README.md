@@ -8,14 +8,17 @@ khoản.
 ## Tính năng
 
 - Duyệt khóa học theo các cấp độ JLPT từ N5 đến N1.
-- Làm bài trắc nghiệm có tính giờ, nghe phát âm từ vựng và xem giải thích sau
-  khi chọn đáp án.
+- Làm bài trắc nghiệm có tính giờ, nghe phát âm từ vựng và âm báo riêng khi trả
+  lời đúng, sai hoặc hết giờ.
 - Tự đưa câu trả lời sai hoặc câu chưa trả lời kịp vào danh sách ôn tập; tiếp
   tục ôn đến khi ghi nhớ.
 - Theo dõi số câu đúng, số từ đã nhớ/chưa nhớ, số lượt ôn và tiến độ khóa học.
+- Hiển thị pháo giấy nhiều màu cùng âm thanh nhẹ khi mở kết quả phiên kiểm tra.
 - Chọn số câu cho mỗi lượt: 10, 20, 50, 100, số lượng tùy chỉnh hoặc toàn bộ.
 - Tùy chỉnh thời gian trả lời từ 3 đến 30 giây, thứ tự câu hỏi và chế độ 2 đáp
   án.
+- Bật/tắt phát âm từ vựng, nghĩa Hán-Việt trong thẻ câu hỏi và tùy chọn tự mở
+  danh sách từ đồng âm sau khi trả lời.
 - Chỉ lưu phiên khi người học chủ động lưu lúc tạm dừng; tự động lưu sau khi
   hoàn tất lượt kiểm tra và ôn tập.
 - Khôi phục đúng câu hỏi và tiến độ tại thời điểm lưu thủ công khi tải lại
@@ -34,8 +37,10 @@ khoản.
    vựng và tự chuyển sang câu tiếp theo.
 4. Khi kết thúc lượt, xem danh sách từ chưa nhớ và bắt đầu ôn tập.
 5. Hoàn thành các lượt ôn để ghi nhớ từ; xem thống kê khi hoàn tất lượt học.
-6. Mở **Cài đặt** để đổi ngôn ngữ hoặc điều chỉnh số câu, thời gian, thứ tự
-   câu hỏi và chế độ làm bài.
+6. Khi bắt đầu khóa học, tùy chỉnh số câu, thời gian, thứ tự câu hỏi và chế độ
+   làm bài trong popup **Thiết lập bài kiểm tra**. Hiển thị Hán-Việt, phát âm
+   từ vựng và cách mở danh sách từ đồng âm có thể đổi trong popup này hoặc
+   **Cài đặt**.
 
 Tiến độ và cài đặt được lưu trong bộ nhớ của trình duyệt hiện tại. Xóa dữ liệu
 trình duyệt có thể làm mất các phiên học đã lưu.

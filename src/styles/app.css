@@ -221,6 +221,45 @@ body {
     font-weight: 700
 }
 
+.question-content {
+    display: block;
+    width: 100%;
+    overflow-wrap: anywhere;
+    text-align: center;
+}
+
+.question-kanji-unit {
+    display: inline-flex;
+    width: 1em;
+    flex-direction: column;
+    align-items: center;
+    vertical-align: top;
+    line-height: 1;
+}
+
+.question-kanji-glyph {
+    line-height: 1.2;
+}
+
+.question-han-viet {
+    width: 100%;
+    margin-top: .06em;
+    color: #adb5bd;
+    font-family: Inter, system-ui, sans-serif;
+    font-size: .21em;
+    font-weight: 600;
+    line-height: 1.1;
+    overflow-wrap: anywhere;
+    text-align: center;
+    text-transform: uppercase;
+    visibility: hidden;
+    word-break: break-all;
+}
+
+.question-han-viet.is-visible {
+    visibility: visible;
+}
+
 .question-label {
     flex: 0 0 auto;
     align-self: flex-start;
@@ -321,10 +360,21 @@ body {
     font-size: .82rem
 }
 
+.answer-info-meaning {
+    display: inline-block;
+    font-size: 1.08em;
+    font-weight: 700;
+}
+
 .homophone-action {
     display: flex;
     justify-content: center;
-    margin-top: .75rem
+    min-height: 2.5rem;
+    visibility: hidden;
+}
+
+.homophone-action.is-visible {
+    visibility: visible;
 }
 
 .homophone-action .btn {
@@ -447,6 +497,13 @@ body {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: .7rem
+}
+
+.result-confetti-canvas {
+    position: fixed;
+    inset: 0;
+    z-index: 1060;
+    pointer-events: none;
 }
 
 .result-item {
@@ -1896,7 +1953,7 @@ body.renshuu-mode {
 
 .renshuu-mode #quizPage .homophone-action {
     flex: 0 0 auto;
-    margin-top: 6px;
+    margin-top: 0;
 }
 
 @media(max-height:700px) {
@@ -2140,33 +2197,84 @@ body.renshuu-mode {
 }
 
 .quiz-setup-list {
-    gap: .65rem;
+    gap: .45rem;
+}
+
+body.catalog-settings .quiz-setup-list .setting-item:not(.language-setting) {
+    display: flex;
 }
 
 .quiz-setup-list .setting-item {
     align-items: center;
-    padding: .8rem;
+    min-height: 50px;
+    gap: .65rem;
+    padding: .55rem .7rem;
+}
+
+.quiz-setup-list .setting-item > label {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    font-size: .96rem;
+    font-weight: 700;
+    white-space: nowrap;
 }
 
 .quiz-setup-list .quiz-setup-control-item {
-    display: block;
+    display: flex;
 }
 
-.quiz-setup-list .setting-item p {
-    line-height: 1.45;
+.quiz-setup-list .setting-item .form-check {
+    flex: 0 0 auto;
+    margin: 0;
 }
 
-.quiz-setup-list .quiz-setup-control-item .setting-copy {
-    margin-bottom: .65rem;
+.quiz-setup-list .timeout-stepper {
+    flex: 0 1 180px;
+    width: min(180px, 54%);
+    grid-template-columns: 36px minmax(42px, 1fr) 36px;
+    gap: .3rem;
 }
 
-.quiz-setup-list .timeout-stepper,
 .quiz-setup-list .quiz-setup-scope-controls {
+    display: flex;
+    flex: 0 1 230px;
+    width: min(230px, 54%);
+    gap: .35rem;
+    margin: 0;
+}
+
+.quiz-setup-list .timeout-stepper .timeout-button,
+.quiz-setup-list .timeout-value-wrap input,
+.quiz-setup-list .quiz-setup-scope-controls .form-select,
+.quiz-setup-list .custom-scope-wrap .form-control {
+    height: 38px;
+}
+
+.quiz-setup-list .timeout-stepper .timeout-button {
+    width: 36px;
+}
+
+.quiz-setup-list .timeout-value-wrap span {
+    right: .55rem;
+}
+
+.quiz-setup-list .quiz-setup-scope-controls .form-select {
+    flex: 1 1 120px;
+    min-width: 0;
+    padding-top: .35rem;
+    padding-bottom: .35rem;
+}
+
+.quiz-setup-list .quiz-setup-scope-controls .custom-scope-wrap {
+    flex: 0 1 90px;
+    min-width: 0;
+}
+
+.quiz-setup-list .custom-scope-wrap .form-control {
     width: 100%;
-}
-
-.quiz-setup-list .quiz-setup-scope-controls {
-    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
+    padding-right: 2rem;
 }
 
 .quiz-setup-modal .modal-footer {
@@ -2183,7 +2291,27 @@ body.renshuu-mode {
     }
 
     .quiz-setup-list .setting-item {
-        padding: .7rem;
+        gap: .5rem;
+        padding: .5rem .55rem;
+    }
+
+    .quiz-setup-list .setting-item > label {
+        font-size: .89rem;
+    }
+
+    .quiz-setup-list .timeout-stepper {
+        flex-basis: 164px;
+        width: min(164px, 54%);
+        grid-template-columns: 32px minmax(38px, 1fr) 32px;
+    }
+
+    .quiz-setup-list .timeout-stepper .timeout-button {
+        width: 32px;
+    }
+
+    .quiz-setup-list .quiz-setup-scope-controls {
+        flex-basis: 200px;
+        width: min(200px, 54%);
     }
 }
 

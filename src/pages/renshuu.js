@@ -13,6 +13,8 @@ let correctAnswer = 0,
   activeQuestions = [],
   currentOptions = [],
   answerLookup = new Map(),
+  hanVietLookup = new Map(),
+  hanVietLoaded = false,
   rememberedList = new Map(),
   unrememberedList = new Map(),
   currentIndex = 0,
@@ -26,6 +28,9 @@ let correctAnswer = 0,
   randomQuestions = false,
   optimizedQuizUI = false,
   twoAnswerMode = false,
+  showHanVietMeanings = true,
+  autoOpenHomophones = false,
+  vocabularyAudioEnabled = true,
   currentLanguage = "ja",
   scopeMode = "preset",
   scopeSize = 50,
@@ -54,8 +59,212 @@ let reviewModal,
   isInitialized = false,
   isSuspended = false,
   isLoading = false,
-  lastSessionRestored = false;
+  lastSessionRestored = false,
+  feedbackAudioContext = null,
+  feedbackAudioUnavailable = false,
+  resultConfettiCanvas = null,
+  resultConfettiFrameId = null,
+  resultConfettiResizeHandler = null;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+function getFeedbackAudioContext() {
+  if (feedbackAudioUnavailable) return null;
+  const AudioContextConstructor =
+    window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextConstructor) {
+    feedbackAudioUnavailable = true;
+    console.warn(
+      "Web Audio API is unavailable; quiz feedback sounds are disabled."
+    );
+    return null;
+  }
+  if (!feedbackAudioContext) {
+    try {
+      feedbackAudioContext = new AudioContextConstructor();
+    } catch (error) {
+      feedbackAudioUnavailable = true;
+      console.warn("Could not initialize quiz feedback audio.", error);
+      return null;
+    }
+  }
+  return feedbackAudioContext;
+}
+function resumeFeedbackAudio(context) {
+  if (context.state !== "suspended") return;
+  try {
+    context.resume().catch((error) => {
+      console.warn("Could not activate quiz feedback audio.", error);
+    });
+  } catch (error) {
+    console.warn("Could not activate quiz feedback audio.", error);
+  }
+}
+export function unlockFeedbackAudio() {
+  const context = getFeedbackAudioContext();
+  if (context) resumeFeedbackAudio(context);
+}
+function playFeedbackSound(result) {
+  const context = getFeedbackAudioContext();
+  if (!context) return;
+  const patterns = {
+    correct: [
+      { frequency: 660, delay: 0, duration: 0.1 },
+      { frequency: 880, delay: 0.12, duration: 0.16 },
+    ],
+    incorrect: [
+      { frequency: 330, delay: 0, duration: 0.14 },
+      { frequency: 220, delay: 0.16, duration: 0.2 },
+    ],
+    timeout: [
+      { frequency: 260, delay: 0, duration: 0.07 },
+      { frequency: 260, delay: 0.12, duration: 0.07 },
+      { frequency: 196, delay: 0.25, duration: 0.14 },
+    ],
+    celebration: [
+      { frequency: 523, delay: 0, duration: 0.12 },
+      { frequency: 659, delay: 0.13, duration: 0.12 },
+      { frequency: 784, delay: 0.26, duration: 0.2 },
+    ],
+  };
+  const notes = patterns[result];
+  if (!notes) return;
+  try {
+    resumeFeedbackAudio(context);
+    const now = context.currentTime;
+    for (const note of notes) {
+      const startAt = now + note.delay;
+      const endAt = startAt + note.duration;
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = result === "incorrect" ? "triangle" : "sine";
+      oscillator.frequency.setValueAtTime(note.frequency, startAt);
+      gain.gain.setValueAtTime(0.0001, startAt);
+      gain.gain.exponentialRampToValueAtTime(
+        result === "celebration" ? 0.045 : 0.1,
+        startAt + 0.012
+      );
+      gain.gain.exponentialRampToValueAtTime(0.0001, endAt);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(startAt);
+      oscillator.stop(endAt + 0.01);
+    }
+  } catch (error) {
+    console.warn("Could not play quiz feedback sound.", error);
+  }
+}
+function stopResultConfetti() {
+  if (resultConfettiFrameId !== null) {
+    cancelAnimationFrame(resultConfettiFrameId);
+    resultConfettiFrameId = null;
+  }
+  if (resultConfettiResizeHandler) {
+    window.removeEventListener("resize", resultConfettiResizeHandler);
+    resultConfettiResizeHandler = null;
+  }
+  resultConfettiCanvas?.remove();
+  resultConfettiCanvas = null;
+}
+function startResultCelebration() {
+  stopResultConfetti();
+  playFeedbackSound("celebration");
+  if (
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  ) {
+    return;
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.className = "result-confetti-canvas";
+  canvas.setAttribute("aria-hidden", "true");
+  const context = canvas.getContext("2d");
+  if (!context) {
+    console.warn("Could not create the result confetti canvas context.");
+    return;
+  }
+  resultConfettiCanvas = canvas;
+  document.body.appendChild(canvas);
+
+  const resizeCanvas = () => {
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(window.innerWidth * pixelRatio);
+    canvas.height = Math.round(window.innerHeight * pixelRatio);
+    canvas.style.width = `${window.innerWidth}px`;
+    canvas.style.height = `${window.innerHeight}px`;
+    context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+  };
+  resultConfettiResizeHandler = resizeCanvas;
+  window.addEventListener("resize", resizeCanvas);
+  resizeCanvas();
+
+  const colors = [
+    "#f43f5e",
+    "#f59e0b",
+    "#22c55e",
+    "#3b82f6",
+    "#a855f7",
+    "#ec4899",
+    "#06b6d4",
+  ];
+  const launchPoints = [
+    window.innerWidth * 0.12,
+    window.innerWidth * 0.5,
+    window.innerWidth * 0.88,
+  ];
+  const particles = launchPoints.flatMap((launchX, launcherIndex) =>
+    Array.from({ length: 36 }, () => ({
+      x: launchX + (Math.random() - 0.5) * 18,
+      y: window.innerHeight + 8,
+      velocityX:
+        (launcherIndex - 1) * 2 + (Math.random() - 0.5) * 6,
+      velocityY: -(12 + Math.random() * 8),
+      width: 5 + Math.random() * 5,
+      height: 7 + Math.random() * 6,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      rotation: Math.random() * Math.PI,
+      rotationSpeed: (Math.random() - 0.5) * 0.24,
+    }))
+  );
+  let startTime = null;
+  let lastFrameTime = null;
+  const animate = (time) => {
+    if (resultConfettiCanvas !== canvas) return;
+    startTime ??= time;
+    const elapsed = time - startTime;
+    const frameScale =
+      lastFrameTime === null
+        ? 1
+        : Math.min(2, (time - lastFrameTime) / 16.67);
+    lastFrameTime = time;
+    context.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+    for (const particle of particles) {
+      particle.x += particle.velocityX * frameScale;
+      particle.y += particle.velocityY * frameScale;
+      particle.velocityY += 0.28 * frameScale;
+      particle.rotation += particle.rotationSpeed * frameScale;
+      context.save();
+      context.globalAlpha = Math.min(1, (2600 - elapsed) / 700);
+      context.translate(particle.x, particle.y);
+      context.rotate(particle.rotation);
+      context.fillStyle = particle.color;
+      context.fillRect(
+        -particle.width / 2,
+        -particle.height / 2,
+        particle.width,
+        particle.height
+      );
+      context.restore();
+    }
+
+    if (elapsed >= 2600) {
+      stopResultConfetti();
+      return;
+    }
+    resultConfettiFrameId = requestAnimationFrame(animate);
+  };
+  resultConfettiFrameId = requestAnimationFrame(animate);
+}
 const I18N = {
   ja: {
     settings: "設定",
@@ -88,6 +297,14 @@ const I18N = {
       "回答時間のカウント中は統計・進捗・フッターを隠し、問題と回答に集中できます。",
     twoAnswerMode: "2択モード",
     twoAnswerModeDesc: "正解と、その問題に設定された選択肢からランダムに1つを出題します。設定は次の問題から適用されます。",
+    showHanViet: "漢字の漢越音を表示",
+    showHanVietDesc: "問題カードに漢越音を表示します。",
+    vocabularyAudio: "単語の音声再生",
+    vocabularyAudioDesc:
+      "回答後または時間切れ後に単語の音声を再生します。",
+    autoOpenHomophones: "同音異義語を自動で表示",
+    autoOpenHomophonesDesc:
+      "回答後、同じ読み方の単語がある場合に一覧を自動で開きます。閉じると次の問題へ進みます。",
     seconds: "秒",
     saved: "セッションを保存しました",
     languageChanged: "表示言語を日本語に変更しました",
@@ -130,6 +347,8 @@ const I18N = {
     timeoutSet: (n) => `回答時間を${n}秒に設定しました`,
     restored: "保存したセッションを復元しました",
     loadFailed: (message) => `データセットを読み込めませんでした：${message}`,
+    hanVietLoadFailed: (message) =>
+      `漢字データを読み込めませんでした：${message}`,
   },
   vi: {
     settings: "Cài đặt",
@@ -163,6 +382,14 @@ const I18N = {
     twoAnswerMode: "Chế độ 2 đáp án",
     twoAnswerModeDesc:
       "Dùng đáp án đúng và chọn ngẫu nhiên một đáp án nhiễu của câu hỏi. Áp dụng từ câu tiếp theo.",
+    showHanViet: "Hiện Hán-Việt",
+    showHanVietDesc: "Hiển thị nghĩa Hán-Việt dưới chữ Kanji trong thẻ câu hỏi.",
+    vocabularyAudio: "Phát âm từ vựng",
+    vocabularyAudioDesc:
+      "Phát âm từ vựng sau khi trả lời hoặc hết giờ.",
+    autoOpenHomophones: "Tự động mở từ đồng âm",
+    autoOpenHomophonesDesc:
+      "Tự mở danh sách từ đồng âm sau khi trả lời; đóng popup để tiếp tục.",
     seconds: "giây",
     saved: "Đã lưu phiên hiện tại",
     languageChanged: "Đã chuyển giao diện sang tiếng Việt",
@@ -205,6 +432,8 @@ const I18N = {
     timeoutSet: (n) => `Đã đặt thời gian trả lời là ${n} giây`,
     restored: "Đã khôi phục phiên đã lưu",
     loadFailed: (message) => `Không thể tải dữ liệu khóa học: ${message}`,
+    hanVietLoadFailed: (message) =>
+      `Không thể tải dữ liệu Hán-Việt: ${message}`,
   },
 };
 function tr() {
@@ -212,6 +441,21 @@ function tr() {
 }
 function applyTwoAnswerModeSetting() {
   twoAnswerMode = e.twoAnswerModeToggle.checked;
+  persistSettings();
+}
+function applyHanVietSetting() {
+  showHanVietMeanings = e.showHanVietToggle.checked;
+  if (isAnswerLocked && currentIndex > 0)
+    renderQuestionText(activeQuestions[currentIndex - 1], true);
+  persistSettings();
+}
+function applyAutoOpenHomophonesSetting() {
+  autoOpenHomophones = e.autoOpenHomophonesToggle.checked;
+  persistSettings();
+}
+function applyVocabularyAudioSetting() {
+  vocabularyAudioEnabled = e.vocabularyAudioToggle.checked;
+  if (!vocabularyAudioEnabled) stopSpeechPlayback();
   persistSettings();
 }
 function getEffectiveScopeSize() {
@@ -441,6 +685,15 @@ function cache() {
     "twoAnswerModeToggle",
     "twoAnswerModeSettingLabel",
     "twoAnswerModeSettingDescription",
+    "showHanVietToggle",
+    "showHanVietSettingLabel",
+    "showHanVietSettingDescription",
+    "autoOpenHomophonesToggle",
+    "autoOpenHomophonesSettingLabel",
+    "autoOpenHomophonesSettingDescription",
+    "vocabularyAudioToggle",
+    "vocabularyAudioSettingLabel",
+    "vocabularyAudioSettingDescription",
     "settingsTitle",
     "reviewModal",
     "reviewTitleText",
@@ -489,6 +742,54 @@ function stats() {
 }
 function display(q) {
   return q.stt <= 1295 ? q.kanji || q.vocab : q.vocab;
+}
+function renderQuestionText(q, showReadings = false) {
+  const content = document.createElement("span");
+  content.className = "question-content";
+  for (const character of Array.from(String(display(q) || ""))) {
+    const meaning = hanVietLookup.get(character);
+    if (!meaning) {
+      content.appendChild(document.createTextNode(character));
+      continue;
+    }
+    const unit = document.createElement("span");
+    unit.className = "question-kanji-unit";
+    const glyph = document.createElement("span");
+    glyph.className = "question-kanji-glyph";
+    glyph.textContent = character;
+    const reading = document.createElement("span");
+    reading.className = "question-han-viet";
+    reading.textContent = meaning;
+    const showMeaning = showReadings && showHanVietMeanings;
+    reading.classList.toggle("is-visible", showMeaning);
+    reading.setAttribute("aria-hidden", String(!showMeaning));
+    unit.append(glyph, reading);
+    content.appendChild(unit);
+  }
+  e.questionText.replaceChildren(content);
+}
+async function loadHanVietData() {
+  if (hanVietLoaded) return;
+  const response = await fetch(
+    new URL("../data/han-viet-list.json", import.meta.url),
+    { cache: "no-store" }
+  );
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const entries = await response.json();
+  if (
+    !Array.isArray(entries) ||
+    entries.some(
+      (entry) =>
+        !entry ||
+        typeof entry.kanji !== "string" ||
+        !entry.kanji ||
+        typeof entry.han_viet !== "string" ||
+        !entry.han_viet
+    )
+  )
+    throw new Error("Invalid Han-Viet data");
+  hanVietLookup = new Map(entries.map(({ kanji, han_viet }) => [kanji, han_viet]));
+  hanVietLoaded = true;
 }
 function getAnswerCount() {
   return twoAnswerMode ? 2 : 4;
@@ -578,10 +879,12 @@ function render(saved = false) {
   updateDatasetProgress();
   e.questionLabel.textContent =
     quizMode === "initial" ? tr().question : tr().reviewQuestion;
-  e.questionText.textContent = display(q);
+  renderQuestionText(q);
   e.answerRow.innerHTML = "";
   e.answerRow.classList.toggle("two-answer-mode", twoAnswerMode);
-  e.homophoneAction.classList.add("d-none");
+  const hasHomophones = (answerLookup.get(String(q.answer1)) || []).length > 1;
+  e.homophoneAction.classList.toggle("d-none", !hasHomophones);
+  e.homophoneAction.classList.remove("is-visible");
   currentHomophoneQuestion = null;
   currentOptions.forEach((v, i) => {
     const b = document.createElement("button");
@@ -624,19 +927,37 @@ function pause() {
 function info(v, q, correct) {
   const x = document.createElement("div");
   x.className = "answer-info";
+  const appendWordMeaning = (word, meaning) => {
+    const meaningText = document.createElement("span");
+    meaningText.className = "answer-info-meaning";
+    meaningText.textContent = meaning;
+    x.append(
+      document.createTextNode(word),
+      document.createElement("br"),
+      meaningText
+    );
+  };
   if (v === correct && q) {
     if (isKatakanaQuestion(q) && q.vocab) {
       x.textContent = q.vocab;
       x.classList.add("katakana-english-info");
     } else {
-      x.textContent = `${q.kanji || q.vocab}\n${q.meaning || tr().noMeaning}`;
+      appendWordMeaning(
+        q.kanji || q.vocab,
+        q.meaning || tr().noMeaning
+      );
     }
   } else {
     const items = answerLookup.get(String(v)) || [];
     const item = items[Math.floor(Math.random() * items.length)];
-    x.textContent = item
-      ? `${item.kanji || item.vocab}\n${item.meaning || tr().noMeaning}`
-      : tr().invalidData;
+    if (item) {
+      appendWordMeaning(
+        item.kanji || item.vocab,
+        item.meaning || tr().noMeaning
+      );
+    } else {
+      x.textContent = tr().invalidData;
+    }
   }
   x.style.whiteSpace = "pre-line";
   return x;
@@ -680,6 +1001,12 @@ function openHomophoneModal(q) {
   });
   homophoneModal.show();
 }
+function maybeOpenHomophones(q) {
+  const homophones = answerLookup.get(String(q.answer1)) || [];
+  if (!autoOpenHomophones || homophones.length <= 1) return false;
+  openHomophoneModal(q);
+  return true;
+}
 function decorate(sel, correct, q) {
   [...e.answerRow.children].forEach((c, i) => {
     c.disabled = true;
@@ -699,17 +1026,32 @@ function decorate(sel, correct, q) {
     currentHomophoneQuestion = q;
     e.homophoneButtonText.textContent = tr().showHomophones(homophones.length);
     e.homophoneAction.classList.remove("d-none");
+    e.homophoneAction.classList.add("is-visible");
   }
 }
-async function waitForFeedback(delay) {
-  await wait(delay);
-  if (e.homophoneModal.classList.contains("show")) {
-    await new Promise((resolve) =>
+function waitForHomophoneModalClose() {
+  return new Promise((resolve) => {
+    const waitForHide = () =>
       e.homophoneModal.addEventListener("hidden.bs.modal", resolve, {
         once: true,
-      })
-    );
+      });
+    if (e.homophoneModal.classList.contains("show")) {
+      waitForHide();
+    } else {
+      e.homophoneModal.addEventListener("shown.bs.modal", waitForHide, {
+        once: true,
+      });
+    }
+  });
+}
+async function waitForFeedback(delay, autoOpenedHomophones = false) {
+  if (autoOpenedHomophones) {
+    await waitForHomophoneModalClose();
+    return;
   }
+  await wait(delay);
+  if (e.homophoneModal.classList.contains("show"))
+    await waitForHomophoneModalClose();
 }
 async function answer(i) {
   if (
@@ -739,12 +1081,15 @@ async function answer(i) {
     rememberedList.delete(q.stt);
   }
   decorate(i, q.answer1, q);
+  playFeedbackSound(ok ? "correct" : "incorrect");
+  renderQuestionText(q, true);
   stats();
   currentIndex++;
   currentOptions = [];
   timerRemainingMs = QUESTION_TIME_MS;
   speakVocabulary(q.vocab);
-  await waitForFeedback(1500);
+  const autoOpenedHomophones = maybeOpenHomophones(q);
+  await waitForFeedback(1500, autoOpenedHomophones);
   if (transitionToken !== questionToken) return;
   render();
 }
@@ -761,12 +1106,14 @@ async function timeout(t) {
   rememberedList.delete(q.stt);
   e.questionLabel.textContent = tr().timedOut;
   decorate(-1, q.answer1, q);
+  playFeedbackSound("timeout");
   stats();
   currentIndex++;
   currentOptions = [];
   timerRemainingMs = QUESTION_TIME_MS;
   speakVocabulary(q.vocab);
-  await waitForFeedback(700);
+  const autoOpenedHomophones = maybeOpenHomophones(q);
+  await waitForFeedback(700, autoOpenedHomophones);
   if (transitionToken !== questionToken) return;
   render();
 }
@@ -1146,6 +1493,13 @@ function applyLanguage(language, notify = true) {
   e.optimizedQuizSettingDescription.textContent = t.optimizeQuizDesc;
   e.twoAnswerModeSettingLabel.textContent = t.twoAnswerMode;
   e.twoAnswerModeSettingDescription.textContent = t.twoAnswerModeDesc;
+  e.showHanVietSettingLabel.textContent = t.showHanViet;
+  e.showHanVietSettingDescription.textContent = t.showHanVietDesc;
+  e.vocabularyAudioSettingLabel.textContent = t.vocabularyAudio;
+  e.vocabularyAudioSettingDescription.textContent = t.vocabularyAudioDesc;
+  e.autoOpenHomophonesSettingLabel.textContent = t.autoOpenHomophones;
+  e.autoOpenHomophonesSettingDescription.textContent =
+    t.autoOpenHomophonesDesc;
   if (e.pauseOverlay) {
     e.pauseOverlay.querySelector("strong").textContent = t.paused;
     e.pauseOverlay.querySelector("span").textContent = t.resume;
@@ -1177,6 +1531,9 @@ function persistSettings() {
       randomQuestions,
       optimizedQuizUI,
       twoAnswerMode,
+      showHanVietMeanings,
+      autoOpenHomophones,
+      vocabularyAudioEnabled,
       questionTimeSeconds: QUESTION_TIME_MS / 1000,
       language: currentLanguage,
       scopeMode,
@@ -1188,7 +1545,13 @@ function persistSetupSettings(settings) {
   try {
     localStorage.setItem(
       SETTING_KEY,
-      JSON.stringify({ ...settings, language: currentLanguage })
+      JSON.stringify({
+        ...settings,
+        showHanVietMeanings,
+        autoOpenHomophones,
+        vocabularyAudioEnabled,
+        language: currentLanguage,
+      })
     );
   } catch (error) {
     console.warn("設定を保存できませんでした。", error);
@@ -1253,6 +1616,7 @@ function stopSpeechPlayback() {
   speechSynthesis.cancel();
 }
 function speakVocabulary(text) {
+  if (!vocabularyAudioEnabled) return;
   stopSpeechPlayback();
   const utterance = new SpeechSynthesisUtterance(String(text || ""));
   const voices = speechSynthesis.getVoices();
@@ -1272,6 +1636,11 @@ async function load(datasetUrl, restoreSavedSession = true) {
   isLoading = true;
   lastSessionRestored = false;
   try {
+    try {
+      await loadHanVietData();
+    } catch (err) {
+      alertMsg(tr().hanVietLoadFailed(err.message));
+    }
     const r = await fetch(datasetUrl, { cache: "no-store" });
     if (!r.ok) throw Error(`HTTP ${r.status}`);
     const t = await r.text();
@@ -1306,11 +1675,22 @@ function initializeQuiz() {
   homophoneModal = new bootstrap.Modal(e.homophoneModal);
   resetModal = new bootstrap.Modal(e.resetConfirmModal);
   toast = new bootstrap.Toast(e.appToast, { delay: 2000 });
+  e.resultModal.addEventListener("shown.bs.modal", startResultCelebration);
+  e.resultModal.addEventListener("hidden.bs.modal", stopResultConfetti);
   try {
     const savedSettings = JSON.parse(localStorage.getItem(SETTING_KEY) || "{}");
     randomQuestions = savedSettings.randomQuestions || false;
     optimizedQuizUI = savedSettings.optimizedQuizUI === true;
     twoAnswerMode = savedSettings.twoAnswerMode === true;
+    showHanVietMeanings =
+      typeof savedSettings.showHanVietMeanings === "boolean"
+        ? savedSettings.showHanVietMeanings
+        : true;
+    autoOpenHomophones = savedSettings.autoOpenHomophones === true;
+    vocabularyAudioEnabled =
+      typeof savedSettings.vocabularyAudioEnabled === "boolean"
+        ? savedSettings.vocabularyAudioEnabled
+        : true;
     currentLanguage = savedSettings.language === "vi" ? "vi" : "ja";
     scopeMode = savedSettings.scopeMode || "preset";
     scopeSize = Math.max(1, Number(savedSettings.scopeSize) || 50);
@@ -1322,6 +1702,9 @@ function initializeQuiz() {
   e.randomQuestionToggle.checked = randomQuestions;
   e.optimizedQuizToggle.checked = optimizedQuizUI;
   e.twoAnswerModeToggle.checked = twoAnswerMode;
+  e.showHanVietToggle.checked = showHanVietMeanings;
+  e.autoOpenHomophonesToggle.checked = autoOpenHomophones;
+  e.vocabularyAudioToggle.checked = vocabularyAudioEnabled;
   e.timeoutValue.value = QUESTION_TIME_MS / 1000;
   const presetScopeValues = [...e.scopeSizeSelect.options]
     .map((option) => option.value)
@@ -1342,6 +1725,9 @@ function initializeQuiz() {
   e.randomQuestionToggle.onchange = applySetting;
   e.optimizedQuizToggle.onchange = applyOptimizedQuizSetting;
   e.twoAnswerModeToggle.onchange = applyTwoAnswerModeSetting;
+  e.showHanVietToggle.onchange = applyHanVietSetting;
+  e.autoOpenHomophonesToggle.onchange = applyAutoOpenHomophonesSetting;
+  e.vocabularyAudioToggle.onchange = applyVocabularyAudioSetting;
   window.addEventListener("app-language-change", (event) => {
     if (event.detail.language !== currentLanguage) {
       applyLanguage(event.detail.language);
@@ -1486,13 +1872,47 @@ export function getQuizSetupSettings() {
       typeof savedSettings.twoAnswerMode === "boolean"
         ? savedSettings.twoAnswerMode
         : twoAnswerMode,
+    showHanVietMeanings:
+      typeof savedSettings.showHanVietMeanings === "boolean"
+        ? savedSettings.showHanVietMeanings
+        : showHanVietMeanings,
+    autoOpenHomophones:
+      typeof savedSettings.autoOpenHomophones === "boolean"
+        ? savedSettings.autoOpenHomophones
+        : autoOpenHomophones,
+    vocabularyAudioEnabled:
+      typeof savedSettings.vocabularyAudioEnabled === "boolean"
+        ? savedSettings.vocabularyAudioEnabled
+        : vocabularyAudioEnabled,
   };
+}
+
+function applyPresentationSettings(settings) {
+  if (typeof settings.showHanVietMeanings === "boolean") {
+    showHanVietMeanings = settings.showHanVietMeanings;
+  }
+  if (typeof settings.autoOpenHomophones === "boolean") {
+    autoOpenHomophones = settings.autoOpenHomophones;
+  }
+  if (typeof settings.vocabularyAudioEnabled === "boolean") {
+    const wasVocabularyAudioEnabled = vocabularyAudioEnabled;
+    vocabularyAudioEnabled = settings.vocabularyAudioEnabled;
+    if (wasVocabularyAudioEnabled && !vocabularyAudioEnabled) {
+      stopSpeechPlayback();
+    }
+  }
+  if (isInitialized) {
+    e.showHanVietToggle.checked = showHanVietMeanings;
+    e.autoOpenHomophonesToggle.checked = autoOpenHomophones;
+    e.vocabularyAudioToggle.checked = vocabularyAudioEnabled;
+  }
 }
 
 function applyRuntimeQuizSettings(settings) {
   randomQuestions = settings.randomQuestions === true;
   optimizedQuizUI = settings.optimizedQuizUI === true;
   twoAnswerMode = settings.twoAnswerMode === true;
+  applyPresentationSettings(settings);
   QUESTION_TIME_MS =
     Math.min(30, Math.max(3, Number(settings.questionTimeSeconds) || 5)) *
     1000;
@@ -1603,6 +2023,8 @@ export async function startRenshuu(
     }
 
     isSuspended = false;
+    applyPresentationSettings(settings);
+    persistSettings();
     if (applySettingsNext) {
       queuedQuizSettings = { ...settings };
       persistSetupSettings(settings);

@@ -1,9 +1,9 @@
 [
   {
-    "id": "tong-hop-tu-vung-n3",
-    "name": "Tổng hợp Từ vựng N3",
-    "description": "Khóa học luyện tập từ vựng JLPT N3.",
-    "dataset": "tong-hop-tu-vung-n3.txt"
+    "id": "kanji-goi-n3",
+    "name": "漢字と語彙N3",
+    "description": "Kanji & Goi N3.",
+    "dataset": "kanji-goi-n3.txt"
   },
   {
     "id": "mimi-kara-oboeru-n3",

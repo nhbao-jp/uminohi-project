@@ -174,7 +174,9 @@ body {
 }
 
 .question-card {
-    cursor: pointer
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none
 }
 
 .question-card-body {
@@ -369,9 +371,7 @@ body {
 }
 
 .footer-inner {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+    justify-content: space-between;
     min-height: inherit;
     height: auto;
     padding-top: .2rem;
@@ -381,15 +381,36 @@ body {
 .developer-credit {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: .4rem;
-    text-align: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: .25rem .8rem;
     line-height: 1.25
 }
 
 .developer-credit {
-    flex-wrap: nowrap;
     font-size: .68rem
+}
+
+.footer-copyright {
+    flex: 1;
+    text-align: left
+}
+
+.footer-contacts {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .25rem .8rem
+}
+
+.footer-contacts a {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem
+}
+
+.facebook-icon {
+    color: #1877f2
 }
 
 .app-footer a {
@@ -885,11 +906,6 @@ body {
 
     .developer-credit {
         font-size: .62rem;
-        text-align: center
-    }
-
-    .developer-credit {
-        justify-content: center
     }
 }
 

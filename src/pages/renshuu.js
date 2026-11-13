@@ -99,7 +99,8 @@ const I18N = {
     result: "テスト結果",
     nextBatch: "次の問題セットへ",
     resetAll: "すべてリセット",
-    footerCredit: (year) => `© ${year} · このウェブサイトは`,
+    footerCredit: (year) =>
+      `© ${year} Uminohi · 開発: BaoNH4 (nhbao.work@gmail.com). すべての権利を保有します。`,
     loading: "データセットを読み込んでいます...",
     customScope: "カスタム",
     fullScope: "全問題",
@@ -173,7 +174,8 @@ const I18N = {
     result: "Kết quả bài kiểm tra",
     nextBatch: "Bộ câu hỏi tiếp theo",
     resetAll: "Đặt lại tất cả",
-    footerCredit: (year) => `© ${year} · Website được phát triển bởi`,
+    footerCredit: (year) =>
+      `Bản quyền © ${year} Uminohi · Phát triển bởi BaoNH4 (nhbao.work@gmail.com). Bảo lưu mọi quyền.`,
     loading: "Đang tải dữ liệu...",
     customScope: "Tùy chỉnh",
     fullScope: "Tất cả câu hỏi",

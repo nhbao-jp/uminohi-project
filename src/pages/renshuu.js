@@ -5,6 +5,7 @@ import { orderQuestions, shuffle } from "../utils/random.js";
 let QUESTION_TIME_MS = 5000;
 const SESSION_KEY_BASE = "jlptVocabularyQuizSessionV2";
 let SESSION_KEY = SESSION_KEY_BASE;
+let PROGRESS_KEY = "jlptVocabularyQuizProgressV1";
 const SETTING_KEY = "jlptVocabularyQuizSettingsV1";
 let correctAnswer = 0,
   wrongAnswer = 0,
@@ -31,6 +32,7 @@ let correctAnswer = 0,
   askedQuestionIds = new Set(),
   completedQuestionIds = new Set(),
   currentBatchIds = [],
+  queuedQuizSettings = null,
   batchNumber = 0,
   batchStartAttempts = 0,
   batchStartCorrect = 0,
@@ -47,14 +49,12 @@ let reviewModal,
   resetModal,
   toast,
   timerAnimationId = null,
-  autoSaveTimeoutId = null,
-  lastAutoSavedAt = 0,
   currentHomophoneQuestion = null,
   activeCourseKey = null,
   isInitialized = false,
   isSuspended = false,
-  isLoading = false;
-const AUTO_SAVE_DELAY_MS = 350;
+  isLoading = false,
+  lastSessionRestored = false;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const I18N = {
   ja: {
@@ -239,6 +239,92 @@ function updateDatasetProgress() {
     .replace(/\.0$/, "")}%`;
   e.datasetProgressBar.style.width = `${percent}%`;
 }
+function sessionStorageKey(courseKey) {
+  return courseKey === "n3/tong-hop-tu-vung-n3"
+    ? SESSION_KEY_BASE
+    : `${SESSION_KEY_BASE}:${courseKey}`;
+}
+function progressStorageKey(courseKey) {
+  return courseKey === "n3/tong-hop-tu-vung-n3"
+    ? "jlptVocabularyQuizProgressV1"
+    : `jlptVocabularyQuizProgressV1:${courseKey}`;
+}
+function getRuntimeQuizSettings() {
+  return {
+    randomQuestions,
+    optimizedQuizUI,
+    twoAnswerMode,
+    questionTimeSeconds: QUESTION_TIME_MS / 1000,
+    scopeMode,
+    scopeSize,
+  };
+}
+function hasSameQuizSettings(first, second) {
+  return [
+    "randomQuestions",
+    "optimizedQuizUI",
+    "twoAnswerMode",
+    "questionTimeSeconds",
+    "scopeMode",
+    "scopeSize",
+  ].every((key) => first[key] === second[key]);
+}
+function isQuizSettings(value) {
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      typeof value.randomQuestions === "boolean" &&
+      typeof value.optimizedQuizUI === "boolean" &&
+      typeof value.twoAnswerMode === "boolean" &&
+      Number.isFinite(Number(value.questionTimeSeconds)) &&
+      ["preset", "custom", "full"].includes(value.scopeMode) &&
+      Number.isFinite(Number(value.scopeSize))
+  );
+}
+function restoreCourseProgress() {
+  completedQuestionIds.clear();
+  askedQuestionIds.clear();
+  const questionIds = new Set(questions.map((question) => question.stt));
+  const validIds = (value) =>
+    Array.isArray(value)
+      ? value.filter(
+          (id) => Number.isInteger(id) && questionIds.has(id)
+        )
+      : [];
+  try {
+    const rawProgress = localStorage.getItem(PROGRESS_KEY);
+    if (rawProgress) {
+      const progress = JSON.parse(rawProgress);
+      completedQuestionIds = new Set(
+        validIds(progress.completedQuestionIds)
+      );
+      askedQuestionIds = new Set(validIds(progress.askedQuestionIds));
+      return;
+    }
+
+    const rawSession = localStorage.getItem(SESSION_KEY);
+    if (!rawSession) return;
+    const snapshot = JSON.parse(rawSession);
+    completedQuestionIds = new Set(
+      validIds(snapshot.completedQuestionIds)
+    );
+    askedQuestionIds = new Set(validIds(snapshot.askedQuestionIds));
+    localStorage.setItem(
+      PROGRESS_KEY,
+      JSON.stringify({
+        completedQuestionIds: [...completedQuestionIds],
+        askedQuestionIds: [...askedQuestionIds],
+      })
+    );
+  } catch (error) {
+    console.warn("コースの進捗を復元できませんでした。", error);
+    showToast(
+      currentLanguage === "vi"
+        ? "Không thể khôi phục tiến độ khóa học"
+        : "コースの進捗を復元できませんでした"
+    );
+  }
+}
 function selectNextBatch() {
   if (askedQuestionIds.size >= questions.length) askedQuestionIds.clear();
   let available = questions.filter((q) => !askedQuestionIds.has(q.stt));
@@ -261,7 +347,6 @@ function selectNextBatch() {
   activeQuestions = [...batch];
   updateScopeStatus();
   updateDatasetProgress();
-  scheduleAutoSave();
   return batch;
 }
 function applyScopeSetting(notify = true) {
@@ -535,7 +620,6 @@ function pause() {
   }
   pauseUI();
   updateOptimizedQuizLayout();
-  scheduleAutoSave();
 }
 function info(v, q, correct) {
   const x = document.createElement("div");
@@ -656,18 +740,13 @@ async function answer(i) {
   }
   decorate(i, q.answer1, q);
   stats();
-  // Persist the next stable state while the old question remains visible for
-  // feedback. Reloading during this delay must not offer the same question a
-  // second time or count it twice.
   currentIndex++;
   currentOptions = [];
   timerRemainingMs = QUESTION_TIME_MS;
-  scheduleAutoSave();
   speakVocabulary(q.vocab);
   await waitForFeedback(1500);
   if (transitionToken !== questionToken) return;
   render();
-  scheduleAutoSave();
 }
 async function timeout(t) {
   if (t !== questionToken || isPaused || isAnswerLocked) return;
@@ -686,12 +765,10 @@ async function timeout(t) {
   currentIndex++;
   currentOptions = [];
   timerRemainingMs = QUESTION_TIME_MS;
-  scheduleAutoSave();
   speakVocabulary(q.vocab);
   await waitForFeedback(700);
   if (transitionToken !== questionToken) return;
   render();
-  scheduleAutoSave();
 }
 function showWrongRateStamp(wrongRate) {
   return new Promise((resolve) => {
@@ -744,7 +821,6 @@ function startReview() {
   timerRemainingMs = QUESTION_TIME_MS;
   reviewModal.hide();
   render();
-  scheduleAutoSave();
 }
 function complete() {
   clearTimer();
@@ -757,7 +833,8 @@ function complete() {
   e.resultRemembered.textContent = rememberedList.size;
   e.resultAttempts.textContent = totalAttempts - batchStartAttempts;
   e.resultRounds.textContent = reviewRound;
-  flushAutoSave();
+  saveCourseProgress();
+  saveCompletedSession();
   resultModal.show();
 }
 function getRemainingTimeForSave() {
@@ -768,6 +845,8 @@ function buildSessionSnapshot() {
   return {
     version: 2,
     savedAt: new Date().toISOString(),
+    isCompleted:
+      !isQuizScopeActive && currentIndex >= activeQuestions.length,
     quizMode,
     currentIndex,
     reviewRound,
@@ -789,42 +868,66 @@ function buildSessionSnapshot() {
     batchStartWrong,
     scopeMode,
     scopeSize,
+    settings: getRuntimeQuizSettings(),
+    nextQuizSettings: queuedQuizSettings
+      ? { ...queuedQuizSettings }
+      : null,
   };
 }
-function save(options = {}) {
-  if (!isDatasetReady || !questions.length) return false;
+function save() {
+  if (!isPaused || !isDatasetReady || !questions.length) return false;
   try {
     localStorage.setItem(SESSION_KEY, JSON.stringify(buildSessionSnapshot()));
-    lastAutoSavedAt = Date.now();
-    if (!options.silent)
-      showToast(
-        currentLanguage === "vi"
-          ? "Đã lưu phiên hiện tại"
-          : "セッションを保存しました"
-      );
+    showToast(
+      currentLanguage === "vi"
+        ? "Đã lưu phiên hiện tại"
+        : "セッションを保存しました"
+    );
     return true;
   } catch (error) {
     console.warn("セッションを保存できませんでした。", error);
-    if (!options.silent)
-      showToast(
-        currentLanguage === "vi"
-          ? "Không thể lưu phiên hiện tại"
-          : "セッションを保存できませんでした"
-      );
+    showToast(
+      currentLanguage === "vi"
+        ? "Không thể lưu phiên hiện tại"
+        : "セッションを保存できませんでした"
+    );
     return false;
   }
 }
-function scheduleAutoSave() {
-  if (!isDatasetReady) return;
-  clearTimeout(autoSaveTimeoutId);
-  autoSaveTimeoutId = setTimeout(
-    () => save({ silent: true }),
-    AUTO_SAVE_DELAY_MS
-  );
+function saveCompletedSession() {
+  if (!isDatasetReady || !questions.length) return false;
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(buildSessionSnapshot()));
+    return true;
+  } catch (error) {
+    console.warn("セッションを保存できませんでした。", error);
+    showToast(
+      currentLanguage === "vi"
+        ? "Không thể tự động lưu kết quả bài kiểm tra"
+        : "テスト結果を自動保存できませんでした"
+    );
+    return false;
+  }
 }
-function flushAutoSave() {
-  clearTimeout(autoSaveTimeoutId);
-  save({ silent: true });
+function saveCourseProgress() {
+  try {
+    localStorage.setItem(
+      PROGRESS_KEY,
+      JSON.stringify({
+        completedQuestionIds: [...completedQuestionIds],
+        askedQuestionIds: [...askedQuestionIds],
+      })
+    );
+    return true;
+  } catch (error) {
+    console.warn("コースの進捗を保存できませんでした。", error);
+    showToast(
+      currentLanguage === "vi"
+        ? "Không thể tự động lưu tiến độ khóa học"
+        : "コースの進捗を自動保存できませんでした"
+    );
+    return false;
+  }
 }
 function restore() {
   const raw = localStorage.getItem(SESSION_KEY);
@@ -847,6 +950,10 @@ function restore() {
     )
       throw Error("Invalid current question index");
 
+    if (isQuizSettings(d.settings)) applyRuntimeQuizSettings(d.settings);
+    queuedQuizSettings = isQuizSettings(d.nextQuizSettings)
+      ? { ...d.nextQuizSettings }
+      : null;
     quizMode = d.quizMode === "review" ? "review" : "initial";
     currentIndex = restoredIndex;
     reviewRound = Math.max(0, Number(d.reviewRound) || 0);
@@ -890,13 +997,25 @@ function restore() {
 }
 function nextBatch() {
   resultModal.hide();
+  localStorage.removeItem(SESSION_KEY);
+  if (queuedQuizSettings) {
+    applyRuntimeQuizSettings(queuedQuizSettings);
+    queuedQuizSettings = null;
+    timerRemainingMs = QUESTION_TIME_MS;
+    persistSettings();
+  }
   selectNextBatch();
   render();
 }
-function reset() {
-  stopSpeechPlayback();
-  resetModal.hide();
+function startNewSession(restartFromBeginning = false) {
+  if (!isDatasetReady || !questions.length) return;
   localStorage.removeItem(SESSION_KEY);
+  stopSpeechPlayback();
+  questionToken++;
+  clearTimer();
+  isPaused = false;
+  isAnswerLocked = false;
+  isSuspended = false;
   correctAnswer =
     wrongAnswer =
     currentIndex =
@@ -904,6 +1023,30 @@ function reset() {
     totalAttempts =
     batchNumber =
       0;
+  quizMode = "initial";
+  if (restartFromBeginning) askedQuestionIds.clear();
+  currentBatchIds = [];
+  queuedQuizSettings = null;
+  rememberedList.clear();
+  unrememberedList.clear();
+  selectNextBatch();
+  reviewModal.hide();
+  resultModal.hide();
+  render();
+}
+function reset() {
+  stopSpeechPlayback();
+  resetModal.hide();
+  localStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(PROGRESS_KEY);
+  correctAnswer =
+    wrongAnswer =
+    currentIndex =
+    reviewRound =
+    totalAttempts =
+    batchNumber =
+      0;
+  queuedQuizSettings = null;
   quizMode = "initial";
   askedQuestionIds.clear();
   completedQuestionIds.clear();
@@ -1040,7 +1183,39 @@ function persistSettings() {
       scopeSize,
     })
   );
-  scheduleAutoSave();
+}
+function persistSetupSettings(settings) {
+  try {
+    localStorage.setItem(
+      SETTING_KEY,
+      JSON.stringify({ ...settings, language: currentLanguage })
+    );
+  } catch (error) {
+    console.warn("設定を保存できませんでした。", error);
+    showToast(
+      currentLanguage === "vi"
+        ? "Không thể lưu cấu hình cho phiên tiếp theo"
+        : "次のセッションの設定を保存できませんでした"
+    );
+  }
+}
+function persistNextQuizSettings(settings) {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return;
+    const snapshot = JSON.parse(raw);
+    if (!isQuizSettings(snapshot.settings))
+      snapshot.settings = getRuntimeQuizSettings();
+    snapshot.nextQuizSettings = { ...settings };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(snapshot));
+  } catch (error) {
+    console.warn("次のセッション設定を保存できませんでした。", error);
+    showToast(
+      currentLanguage === "vi"
+        ? "Không thể lưu cấu hình cho phiên tiếp theo"
+        : "次のセッションの設定を保存できませんでした"
+    );
+  }
 }
 function applySetting() {
   randomQuestions = e.randomQuestionToggle.checked;
@@ -1093,8 +1268,9 @@ function speakVocabulary(text) {
     null;
   speechSynthesis.speak(utterance);
 }
-async function load(datasetUrl) {
+async function load(datasetUrl, restoreSavedSession = true) {
   isLoading = true;
+  lastSessionRestored = false;
   try {
     const r = await fetch(datasetUrl, { cache: "no-store" });
     if (!r.ok) throw Error(`HTTP ${r.status}`);
@@ -1109,10 +1285,12 @@ async function load(datasetUrl) {
       answerLookup.get(key).push(x);
     });
     isDatasetReady = true;
+    restoreCourseProgress();
     selectNextBatch();
     e.loadingState.classList.add("d-none");
     e.quizApp.classList.remove("d-none");
-    if (!restore()) render();
+    lastSessionRestored = restoreSavedSession && restore();
+    if (!lastSessionRestored) render();
     if (isSuspended) suspendRenshuu();
   } catch (err) {
     e.loadingState.classList.add("d-none");
@@ -1205,15 +1383,66 @@ function initializeQuiz() {
         answer(Number(shortcut[1]) - 1);
     }
   };
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) flushAutoSave();
-  });
-  window.addEventListener("pagehide", flushAutoSave);
-  window.addEventListener("beforeunload", flushAutoSave);
 }
 
 export function getActiveCourseKey() {
   return activeCourseKey;
+}
+
+export function getSavedSessionStatus(courseKey, requestedSettings) {
+  try {
+    const raw = localStorage.getItem(sessionStorageKey(courseKey));
+    if (!raw) return { hasUnfinishedSession: false, settingsChanged: false };
+    const snapshot = JSON.parse(raw);
+    const activeIds = Array.isArray(snapshot.activeIds)
+      ? snapshot.activeIds
+      : [];
+    const currentIndex = Number(snapshot.currentIndex);
+    if (
+      snapshot.isCompleted === true ||
+      !activeIds.length ||
+      !Number.isInteger(currentIndex) ||
+      currentIndex < 0 ||
+      currentIndex >= activeIds.length
+    )
+      return { hasUnfinishedSession: false, settingsChanged: false };
+
+    let savedSettings = snapshot.settings;
+    if (!isQuizSettings(savedSettings)) {
+      let storedSettings = {};
+      try {
+        storedSettings = JSON.parse(localStorage.getItem(SETTING_KEY) || "{}");
+      } catch (error) {
+        console.warn("設定を読み込めませんでした。", error);
+      }
+      savedSettings = {
+        randomQuestions: storedSettings.randomQuestions === true,
+        optimizedQuizUI: storedSettings.optimizedQuizUI === true,
+        twoAnswerMode: storedSettings.twoAnswerMode === true,
+        questionTimeSeconds:
+          Number(storedSettings.questionTimeSeconds) || 5,
+        scopeMode: ["preset", "custom", "full"].includes(snapshot.scopeMode)
+          ? snapshot.scopeMode
+          : ["preset", "custom", "full"].includes(storedSettings.scopeMode)
+          ? storedSettings.scopeMode
+          : "preset",
+        scopeSize:
+          Number(snapshot.scopeSize) ||
+          Number(storedSettings.scopeSize) ||
+          50,
+      };
+    }
+    return {
+      hasUnfinishedSession: true,
+      settingsChanged: !hasSameQuizSettings(
+        savedSettings,
+        requestedSettings
+      ),
+    };
+  } catch (error) {
+    console.warn("保存したセッションを確認できませんでした。", error);
+    return { hasUnfinishedSession: false, settingsChanged: false };
+  }
 }
 
 export function getQuizSetupSettings() {
@@ -1260,14 +1489,13 @@ export function getQuizSetupSettings() {
   };
 }
 
-export function configureQuizSettings(settings) {
+function applyRuntimeQuizSettings(settings) {
   randomQuestions = settings.randomQuestions === true;
   optimizedQuizUI = settings.optimizedQuizUI === true;
   twoAnswerMode = settings.twoAnswerMode === true;
   QUESTION_TIME_MS =
     Math.min(30, Math.max(3, Number(settings.questionTimeSeconds) || 5)) *
     1000;
-  timerRemainingMs = QUESTION_TIME_MS;
   scopeMode = ["preset", "custom", "full"].includes(settings.scopeMode)
     ? settings.scopeMode
     : "preset";
@@ -1297,10 +1525,19 @@ export function configureQuizSettings(settings) {
     updateScopeStatus();
     updateOptimizedQuizLayout();
   }
+}
+
+export function configureQuizSettings(settings) {
+  applyRuntimeQuizSettings(settings);
+  timerRemainingMs = QUESTION_TIME_MS;
   persistSettings();
 }
 
-export async function initRenshuu(datasetUrl, courseKey) {
+export async function initRenshuu(
+  datasetUrl,
+  courseKey,
+  restoreSavedSession = true
+) {
   if (isInitialized) {
     if (
       activeCourseKey === courseKey &&
@@ -1309,18 +1546,16 @@ export async function initRenshuu(datasetUrl, courseKey) {
     ) {
       e.loadingState.classList.remove("d-none");
       e.alertRegion.replaceChildren();
-      await load(datasetUrl);
+      await load(datasetUrl, restoreSavedSession);
     }
     return;
   }
   isInitialized = true;
   activeCourseKey = courseKey;
-  SESSION_KEY =
-    courseKey === "n3/tong-hop-tu-vung-n3"
-      ? SESSION_KEY_BASE
-      : `${SESSION_KEY_BASE}:${courseKey}`;
+  SESSION_KEY = sessionStorageKey(courseKey);
+  PROGRESS_KEY = progressStorageKey(courseKey);
   initializeQuiz();
-  await load(datasetUrl);
+  await load(datasetUrl, restoreSavedSession);
 }
 
 export function suspendRenshuu() {
@@ -1336,16 +1571,54 @@ export function suspendRenshuu() {
   } else if (!isPaused && currentIndex < activeQuestions.length) {
     pause();
   }
-  flushAutoSave();
 }
 
-export function resumeRenshuu() {
-  if (!isSuspended || !isDatasetReady) return;
+export async function startRenshuu(
+  datasetUrl,
+  courseKey,
+  {
+    settings,
+    resumeSavedSession,
+    applySettingsNext,
+    restartFromBeginning,
+  }
+) {
+  const isCurrentCourseReady =
+    activeCourseKey === courseKey && isDatasetReady;
   isSuspended = false;
-  if (currentIndex < activeQuestions.length) {
-    render();
-    scheduleAutoSave();
+
+  if (resumeSavedSession) {
+    let restored = false;
+    if (isCurrentCourseReady) {
+      restored = restore();
+    } else {
+      await initRenshuu(datasetUrl, courseKey, true);
+      restored = lastSessionRestored;
+    }
+
+    if (!restored) {
+      configureQuizSettings(settings);
+      startNewSession(true);
+      return;
+    }
+
+    isSuspended = false;
+    if (applySettingsNext) {
+      queuedQuizSettings = { ...settings };
+      persistSetupSettings(settings);
+      persistNextQuizSettings(settings);
+    }
+    return;
+  }
+
+  configureQuizSettings(settings);
+  if (isCurrentCourseReady) {
+    localStorage.removeItem(sessionStorageKey(courseKey));
+    e.loadingState.classList.add("d-none");
+    startNewSession(restartFromBeginning);
   } else {
-    finish();
+    await initRenshuu(datasetUrl, courseKey, false);
+    localStorage.removeItem(sessionStorageKey(courseKey));
+    if (restartFromBeginning && isDatasetReady) startNewSession(true);
   }
 }

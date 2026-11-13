@@ -1,10 +1,9 @@
 import { getCourse, LEVELS } from "./services/course-catalog.js";
 import {
   getActiveCourseKey,
-  configureQuizSettings,
+  getSavedSessionStatus,
   getQuizSetupSettings,
-  initRenshuu,
-  resumeRenshuu,
+  startRenshuu,
   suspendRenshuu,
 } from "./pages/renshuu.js";
 import {
@@ -26,6 +25,22 @@ const loadingState = document.getElementById("loadingState");
 const languageSelect = document.getElementById("languageSelect");
 const quizSetupModalElement = document.getElementById("quizSetupModal");
 const quizSetupModal = new bootstrap.Modal(quizSetupModalElement);
+const savedSessionConfigModalElement = document.getElementById(
+  "savedSessionConfigModal"
+);
+const savedSessionConfigModal = new bootstrap.Modal(
+  savedSessionConfigModalElement,
+  { backdrop: "static", keyboard: false }
+);
+const continueSavedSessionButton = document.getElementById(
+  "continueSavedSessionButton"
+);
+const restartSavedSessionButton = document.getElementById(
+  "restartSavedSessionButton"
+);
+const cancelSavedSessionConfigButton = document.getElementById(
+  "cancelSavedSessionConfigButton"
+);
 const setupRandomQuestionToggle = document.getElementById(
   "setupRandomQuestionToggle"
 );
@@ -49,6 +64,22 @@ let startingCourseKey = null;
 let countdownTimeoutId = null;
 let countdownToken = 0;
 let resolveCountdown = null;
+let resolveSavedSessionChoice = null;
+
+function chooseSavedSessionAction() {
+  return new Promise((resolve) => {
+    resolveSavedSessionChoice = resolve;
+    const finish = (choice) => {
+      resolveSavedSessionChoice = null;
+      resolve(choice);
+      savedSessionConfigModal.hide();
+    };
+    continueSavedSessionButton.onclick = () => finish("continue");
+    restartSavedSessionButton.onclick = () => finish("restart");
+    cancelSavedSessionConfigButton.onclick = () => finish(null);
+    savedSessionConfigModal.show();
+  });
+}
 
 function renderBrandTitle() {
   const brandTitle = document.getElementById("brandTitle");
@@ -162,6 +193,24 @@ function syncQuizSetupLanguage(language) {
   setupCustomScopeValue.setAttribute("aria-label", copy.customScopeAria);
   cancelQuizSetupButton.textContent = copy.cancel;
   startQuizSetupButton.querySelector("span").textContent = copy.start;
+  document.getElementById("savedSessionConfigTitle").textContent =
+    isVietnamese
+      ? "Cấu hình mới sẽ áp dụng sau phiên hiện tại"
+      : "新しい設定は現在のセッション終了後に適用されます";
+  document.querySelector(
+    "#savedSessionConfigModal .modal-body"
+  ).textContent = isVietnamese
+    ? "Cấu hình mới sẽ áp dụng từ phiên tiếp theo. Tiếp tục phiên hiện tại hoặc bắt đầu lại để áp dụng ngay."
+    : "新しい設定は次のセッションから適用されます。現在のセッションを続けるか、最初からやり直すと新しい設定がすぐに適用されます。";
+  cancelSavedSessionConfigButton.textContent = isVietnamese
+    ? "Hủy"
+    : "キャンセル";
+  continueSavedSessionButton.textContent = isVietnamese
+    ? "Tiếp tục"
+    : "続ける";
+  restartSavedSessionButton.textContent = isVietnamese
+    ? "Bắt đầu lại"
+    : "最初からやり直す";
 }
 
 function syncLanguageUI(language) {
@@ -253,6 +302,11 @@ function cancelStartCountdown() {
   if (resolveCountdown) {
     resolveCountdown(false);
     resolveCountdown = null;
+  }
+  if (resolveSavedSessionChoice) {
+    resolveSavedSessionChoice(null);
+    resolveSavedSessionChoice = null;
+    savedSessionConfigModal.hide();
   }
   startingCourseKey = null;
 }
@@ -463,10 +517,10 @@ cancelQuizSetupButton.addEventListener("click", () => {
 startQuizSetupButton.addEventListener("click", async () => {
   if (!pendingCourseStart) return;
   const courseStart = pendingCourseStart;
+  const settings = readQuizSetupSettings();
   pendingCourseStart = null;
   startingCourseKey = courseStart.courseKey;
   startQuizSetupButton.disabled = true;
-  configureQuizSettings(readQuizSetupSettings());
   const modalHidden = new Promise((resolve) => {
     quizSetupModalElement.addEventListener("hidden.bs.modal", resolve, {
       once: true,
@@ -478,19 +532,37 @@ startQuizSetupButton.addEventListener("click", async () => {
     startQuizSetupButton.disabled = false;
     return;
   }
-  const countdownFinished = await runStartCountdown(courseStart.courseKey);
-  if (!countdownFinished) {
-    startQuizSetupButton.disabled = false;
-    return;
-  }
-  startingCourseKey = null;
   try {
-    if (getActiveCourseKey() === courseStart.courseKey) {
-      loadingState.classList.add("d-none");
-      resumeRenshuu();
-    } else {
-      await initRenshuu(courseStart.course.datasetUrl, courseStart.courseKey);
+    const savedSession = getSavedSessionStatus(courseStart.courseKey, settings);
+    let resumeSavedSession = savedSession.hasUnfinishedSession;
+    let applySettingsNext = false;
+    let restartFromBeginning = false;
+    if (resumeSavedSession && savedSession.settingsChanged) {
+      const choice = await chooseSavedSessionAction();
+      if (startingCourseKey !== courseStart.courseKey) return;
+      if (choice === null) {
+        pendingCourseStart = courseStart;
+        quizSetupModal.show();
+        return;
+      }
+      resumeSavedSession = choice === "continue";
+      applySettingsNext = choice === "continue";
+      restartFromBeginning = choice === "restart";
     }
+
+    const countdownFinished = await runStartCountdown(courseStart.courseKey);
+    if (!countdownFinished) return;
+    startingCourseKey = null;
+    await startRenshuu(
+      courseStart.course.datasetUrl,
+      courseStart.courseKey,
+      {
+        settings,
+        resumeSavedSession,
+        applySettingsNext,
+        restartFromBeginning,
+      }
+    );
   } catch (error) {
     loadingState.classList.add("d-none");
     const alert = document.createElement("div");

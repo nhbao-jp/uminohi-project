@@ -16,7 +16,13 @@ khoản.
 - Chọn số câu cho mỗi lượt: 10, 20, 50, 100, số lượng tùy chỉnh hoặc toàn bộ.
 - Tùy chỉnh thời gian trả lời từ 3 đến 30 giây, thứ tự câu hỏi và chế độ 2 đáp
   án.
-- Lưu tiến độ và cài đặt trên trình duyệt để có thể tiếp tục phiên học sau.
+- Chỉ lưu phiên khi người học chủ động lưu lúc tạm dừng; tự động lưu sau khi
+  hoàn tất lượt kiểm tra và ôn tập.
+- Khôi phục đúng câu hỏi và tiến độ tại thời điểm lưu thủ công khi tải lại
+  trang. Mỗi lần đếm ngược bắt đầu một phiên mới.
+- Nếu cấu hình thay đổi khi có phiên đã lưu chưa hoàn tất, có thể tiếp tục
+  phiên đó và áp dụng cấu hình mới cho lượt sau, hoặc làm lại từ đầu để áp
+  dụng ngay.
 - Hỗ trợ liên kết trực tiếp đến trang cấp độ hoặc khóa học; tải lại trang không
   làm mất đường dẫn hiện tại.
 

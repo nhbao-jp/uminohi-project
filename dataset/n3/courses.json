@@ -1,0 +1,15 @@
+[
+  {
+    "id": "tong-hop-tu-vung-n3",
+    "name": "Tổng hợp Từ vựng N3",
+    "description": "Khóa học luyện tập từ vựng JLPT N3.",
+    "dataset": "tong-hop-tu-vung-n3.txt"
+  },
+  {
+    "id": "mimi-kara-oboeru-n3",
+    "name": "耳から覚えるＮ3",
+    "description": "耳から覚えるＮ3.",
+    "dataset": "mimi-kara-oboeru-n3.txt"
+  }
+  
+]

@@ -67,12 +67,12 @@ body {
 
 .brand-title-i {
     position: relative;
-    display: inline-block
+    display: inline
 }
 
 .brand-title-i::after {
     position: absolute;
-    top: .28em;
+    top: .14em;
     left: 50%;
     width: .16em;
     aspect-ratio: 1;
@@ -399,7 +399,7 @@ body {
 .developer-credit {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     width: 100%;
     gap: .25rem .8rem;
     line-height: 1.25
@@ -410,31 +410,7 @@ body {
 }
 
 .footer-copyright {
-    flex: 1;
-    text-align: left
-}
-
-.footer-contacts {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: .25rem .8rem
-}
-
-.footer-contacts a {
-    display: inline-flex;
-    align-items: center;
-    gap: .25rem
-}
-
-.facebook-icon {
-    color: #1877f2
-}
-
-.app-footer a {
-    color: var(--primary);
-    font-weight: 700;
-    text-decoration: none
+    text-align: center
 }
 
 .setting-item {
@@ -628,12 +604,9 @@ body {
 }
 
 .developer-credit {
-    display: inline-flex;
-    align-items: center
-}
-
-.developer-credit a {
-    font-weight: 700
+    display: flex;
+    justify-content: center;
+    width: 100%
 }
 
 /* Home and course catalog */

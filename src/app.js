@@ -5,6 +5,7 @@ import {
   getQuizSetupSettings,
   startRenshuu,
   suspendRenshuu,
+  unlockFeedbackAudio,
 } from "./pages/renshuu.js";
 import {
   applyHomeLanguage,
@@ -53,6 +54,15 @@ const setupTwoAnswerModeToggle = document.getElementById(
 );
 const setupOptimizedQuizToggle = document.getElementById(
   "setupOptimizedQuizToggle"
+);
+const setupShowHanVietToggle = document.getElementById(
+  "setupShowHanVietToggle"
+);
+const setupVocabularyAudioToggle = document.getElementById(
+  "setupVocabularyAudioToggle"
+);
+const setupAutoOpenHomophonesToggle = document.getElementById(
+  "setupAutoOpenHomophonesToggle"
 );
 const startQuizSetupButton = document.getElementById("startQuizSetupButton");
 const cancelQuizSetupButton = document.getElementById("cancelQuizSetupButton");
@@ -105,17 +115,15 @@ function syncQuizSetupLanguage(language) {
     ? {
         title: "Thiết lập bài kiểm tra",
         random: "Ngẫu nhiên câu hỏi",
-        randomDescription: "Xáo trộn thứ tự câu hỏi khi bắt đầu mỗi lượt.",
         timeout: "Thời gian trả lời",
-        timeoutDescription: "Chọn từ 3 đến 30 giây cho mỗi câu hỏi.",
         scope: "Số lượng câu hỏi",
-        scopeDescription: "Chọn số câu hỏi cho lượt kiểm tra này.",
         custom: "Tùy chỉnh",
         full: "Tất cả câu hỏi",
         twoAnswer: "Chế độ 2 đáp án",
-        twoAnswerDescription: "Chỉ hiển thị đáp án đúng và một đáp án nhiễu.",
         optimized: "Tối ưu giao diện kiểm tra",
-        optimizedDescription: "Ẩn thống kê, tiến độ và footer khi trả lời.",
+        showHanViet: "Hiện Hán-Việt",
+        vocabularyAudio: "Phát âm từ vựng",
+        autoOpenHomophones: "Tự động mở từ đồng âm",
         seconds: "giây",
         questions: "câu",
         decrease: "Giảm 1 giây",
@@ -128,17 +136,15 @@ function syncQuizSetupLanguage(language) {
     : {
         title: "テストの設定",
         random: "問題をランダムに出題",
-        randomDescription: "各ラウンドの開始時に問題の順序をシャッフルします。",
         timeout: "回答時間",
-        timeoutDescription: "1問あたり3〜30秒で設定できます。",
         scope: "問題数",
-        scopeDescription: "今回のテストで出題する問題数を選択します。",
         custom: "カスタム",
         full: "全問題",
         twoAnswer: "2択モード",
-        twoAnswerDescription: "正解と1つの選択肢を表示します。",
         optimized: "テスト画面を最適化",
-        optimizedDescription: "回答中は統計・進捗・フッターを非表示にします。",
+        showHanViet: "漢越音を表示",
+        vocabularyAudio: "単語の音声再生",
+        autoOpenHomophones: "同音異義語を自動で開く",
         seconds: "秒",
         questions: "問",
         decrease: "1秒減らす",
@@ -151,26 +157,25 @@ function syncQuizSetupLanguage(language) {
   document.getElementById("quizSetupTitle").textContent = copy.title;
   document.querySelector('label[for="setupRandomQuestionToggle"]').textContent =
     copy.random;
-  document.querySelector('[data-setup-description="random"]').textContent =
-    copy.randomDescription;
   document.querySelector('label[for="setupTimeoutValue"]').textContent =
     copy.timeout;
-  document.querySelector('[data-setup-description="timeout"]').textContent =
-    copy.timeoutDescription;
   document.querySelector('label[for="setupScopeSizeSelect"]').textContent =
     copy.scope;
-  document.querySelector('[data-setup-description="scope"]').textContent =
-    copy.scopeDescription;
   document.querySelector(
     'label[for="setupTwoAnswerModeToggle"]'
   ).textContent = copy.twoAnswer;
-  document.querySelector('[data-setup-description="twoAnswer"]').textContent =
-    copy.twoAnswerDescription;
   document.querySelector(
     'label[for="setupOptimizedQuizToggle"]'
   ).textContent = copy.optimized;
-  document.querySelector('[data-setup-description="optimized"]').textContent =
-    copy.optimizedDescription;
+  document.querySelector(
+    'label[for="setupShowHanVietToggle"]'
+  ).textContent = copy.showHanViet;
+  document.querySelector(
+    'label[for="setupVocabularyAudioToggle"]'
+  ).textContent = copy.vocabularyAudio;
+  document.querySelector(
+    'label[for="setupAutoOpenHomophonesToggle"]'
+  ).textContent = copy.autoOpenHomophones;
   setupScopeSizeSelect.querySelector('[value="custom"]').textContent =
     copy.custom;
   setupScopeSizeSelect.querySelector('[value="full"]').textContent =
@@ -362,6 +367,9 @@ function showQuizSetup(course, courseKey, levelId) {
   setupCustomScopeValue.value = settings.scopeSize;
   setupTwoAnswerModeToggle.checked = settings.twoAnswerMode;
   setupOptimizedQuizToggle.checked = settings.optimizedQuizUI;
+  setupShowHanVietToggle.checked = settings.showHanVietMeanings;
+  setupVocabularyAudioToggle.checked = settings.vocabularyAudioEnabled;
+  setupAutoOpenHomophonesToggle.checked = settings.autoOpenHomophones;
   updateSetupCustomScope();
   pendingCourseStart = { course, courseKey, levelId };
   quizSetupModal.show();
@@ -390,6 +398,9 @@ function readQuizSetupSettings() {
     scopeSize,
     twoAnswerMode: setupTwoAnswerModeToggle.checked,
     optimizedQuizUI: setupOptimizedQuizToggle.checked,
+    showHanVietMeanings: setupShowHanVietToggle.checked,
+    vocabularyAudioEnabled: setupVocabularyAudioToggle.checked,
+    autoOpenHomophones: setupAutoOpenHomophonesToggle.checked,
   };
 }
 
@@ -516,6 +527,7 @@ cancelQuizSetupButton.addEventListener("click", () => {
 });
 startQuizSetupButton.addEventListener("click", async () => {
   if (!pendingCourseStart) return;
+  unlockFeedbackAudio();
   const courseStart = pendingCourseStart;
   const settings = readQuizSetupSettings();
   pendingCourseStart = null;

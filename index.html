@@ -148,15 +148,15 @@
                     <div class="card-body question-card-body text-center">
                         <p id="questionLabel" class="question-label text-secondary">問題</p>
                         <h2 id="questionText" class="question-text mb-0" lang="ja"></h2>
+                        <div id="homophoneAction" class="homophone-action">
+                            <button id="homophoneButton" type="button" class="btn btn-outline-primary">
+                                <i class="bi bi-collection me-2" aria-hidden="true"></i><span
+                                    id="homophoneButtonText"></span>
+                            </button>
+                        </div>
                     </div>
                 </article>
                 <div id="answerRow" class="answer-row"></div>
-                <div id="homophoneAction" class="homophone-action d-none">
-                    <button id="homophoneButton" type="button" class="btn btn-outline-primary">
-                        <i class="bi bi-collection me-2" aria-hidden="true"></i><span
-                            id="homophoneButtonText"></span>
-                    </button>
-                </div>
             </section>
         </section>
         </section>
@@ -210,6 +210,33 @@
                 </div>
                 <div class="form-check form-switch">
                     <input class="form-check-input" type="checkbox" role="switch" id="twoAnswerModeToggle">
+                </div>
+            </div>
+            <div class="setting-item">
+                <div>
+                    <label id="showHanVietSettingLabel" class="fw-semibold" for="showHanVietToggle">Hiện Hán-Việt</label>
+                    <p id="showHanVietSettingDescription" class="small text-secondary mb-0">Hiển thị nghĩa Hán-Việt trong thẻ câu hỏi.</p>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" role="switch" id="showHanVietToggle">
+                </div>
+            </div>
+            <div class="setting-item">
+                <div>
+                    <label id="autoOpenHomophonesSettingLabel" class="fw-semibold" for="autoOpenHomophonesToggle">Tự động mở từ đồng âm</label>
+                    <p id="autoOpenHomophonesSettingDescription" class="small text-secondary mb-0">Tự mở danh sách từ đồng âm sau khi trả lời; đóng popup để tiếp tục.</p>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" role="switch" id="autoOpenHomophonesToggle">
+                </div>
+            </div>
+            <div class="setting-item">
+                <div>
+                    <label id="vocabularyAudioSettingLabel" class="fw-semibold" for="vocabularyAudioToggle">Phát âm từ vựng</label>
+                    <p id="vocabularyAudioSettingDescription" class="small text-secondary mb-0">Phát âm từ vựng sau khi trả lời hoặc hết giờ.</p>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" role="switch" id="vocabularyAudioToggle">
                 </div>
             </div>
             <div class="setting-item scope-setting">
@@ -282,19 +309,13 @@
                 <div class="modal-body">
                     <div class="settings-list quiz-setup-list">
                         <div class="setting-item">
-                            <div>
-                                <label class="fw-semibold" for="setupRandomQuestionToggle">Ngẫu nhiên câu hỏi</label>
-                                <p class="small text-secondary mb-0" data-setup-description="random">Xáo trộn thứ tự câu hỏi khi bắt đầu mỗi lượt.</p>
-                            </div>
+                            <label class="fw-semibold" for="setupRandomQuestionToggle">Ngẫu nhiên câu hỏi</label>
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" role="switch" id="setupRandomQuestionToggle">
                             </div>
                         </div>
                         <div class="setting-item quiz-setup-control-item">
-                            <div class="setting-copy">
-                                <label class="fw-semibold" for="setupTimeoutValue">Thời gian trả lời</label>
-                                <p class="small text-secondary mb-0" data-setup-description="timeout">Chọn từ 3 đến 30 giây cho mỗi câu hỏi.</p>
-                            </div>
+                            <label class="fw-semibold" for="setupTimeoutValue">Thời gian trả lời</label>
                             <div class="timeout-stepper" role="group" aria-label="Điều chỉnh thời gian trả lời">
                                 <button id="setupDecreaseTimeoutButton" type="button" class="btn timeout-button"
                                     aria-label="Giảm 1 giây"><i class="bi bi-dash-lg"></i></button>
@@ -308,10 +329,7 @@
                             </div>
                         </div>
                         <div class="setting-item quiz-setup-control-item">
-                            <div class="setting-copy">
-                                <label class="fw-semibold" for="setupScopeSizeSelect">Số lượng câu hỏi</label>
-                                <p class="small text-secondary mb-0" data-setup-description="scope">Chọn số câu hỏi cho lượt kiểm tra này.</p>
-                            </div>
+                            <label class="fw-semibold" for="setupScopeSizeSelect">Số lượng câu hỏi</label>
                             <div class="scope-controls quiz-setup-scope-controls">
                                 <select id="setupScopeSizeSelect" class="form-select" aria-label="Số lượng câu hỏi">
                                     <option value="10">10</option>
@@ -329,21 +347,33 @@
                             </div>
                         </div>
                         <div class="setting-item">
-                            <div>
-                                <label class="fw-semibold" for="setupTwoAnswerModeToggle">Chế độ 2 đáp án</label>
-                                <p class="small text-secondary mb-0" data-setup-description="twoAnswer">Chỉ hiển thị đáp án đúng và một đáp án nhiễu.</p>
-                            </div>
+                            <label class="fw-semibold" for="setupTwoAnswerModeToggle">Chế độ 2 đáp án</label>
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" role="switch" id="setupTwoAnswerModeToggle">
                             </div>
                         </div>
                         <div class="setting-item">
-                            <div>
-                                <label class="fw-semibold" for="setupOptimizedQuizToggle">Tối ưu giao diện kiểm tra</label>
-                                <p class="small text-secondary mb-0" data-setup-description="optimized">Ẩn thống kê, tiến độ và footer khi trả lời.</p>
-                            </div>
+                            <label class="fw-semibold" for="setupOptimizedQuizToggle">Tối ưu giao diện kiểm tra</label>
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" role="switch" id="setupOptimizedQuizToggle">
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label class="fw-semibold" for="setupShowHanVietToggle">Hiện Hán-Việt</label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="setupShowHanVietToggle">
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label class="fw-semibold" for="setupVocabularyAudioToggle">Phát âm từ vựng</label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="setupVocabularyAudioToggle">
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label class="fw-semibold" for="setupAutoOpenHomophonesToggle">Tự động mở từ đồng âm</label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="setupAutoOpenHomophonesToggle">
                             </div>
                         </div>
                     </div>

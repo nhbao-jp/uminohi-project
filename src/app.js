@@ -53,8 +53,8 @@ function syncLanguageUI(language) {
     option.classList.toggle("active", option.dataset.language === language);
   });
   document.getElementById("footerCreditText").textContent = isVietnamese
-    ? `© ${new Date().getFullYear()} · Website được phát triển bởi`
-    : `© ${new Date().getFullYear()} · このウェブサイトは`;
+    ? `Bản quyền © ${new Date().getFullYear()} Uminohi · Phát triển bởi BaoNH4 (nhbao.work@gmail.com). Bảo lưu mọi quyền.`
+    : `© ${new Date().getFullYear()} Uminohi · 開発: BaoNH4 (nhbao.work@gmail.com). すべての権利を保有します。`;
   applyHomeLanguage(language);
 }
 
@@ -107,7 +107,7 @@ async function route() {
   if (activeCourseKey && routeCourseKey !== activeCourseKey) suspendRenshuu();
 
   if (current.type === "home") {
-    document.title = "Lộ trình học JLPT · 日本語の語彙クイズ";
+    document.title = "日本語の語彙クイズ";
     displayPage("home");
     showHome();
     return;
